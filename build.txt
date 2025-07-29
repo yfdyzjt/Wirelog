@@ -1,0 +1,3 @@
+displayName = Wirelog
+author = yfdyzjt
+version = 0.1
