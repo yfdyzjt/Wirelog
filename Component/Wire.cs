@@ -7,10 +7,10 @@ namespace Wirelog
 {
     public class Wire
     {
-        public List<InputPort> InputPorts { get; } = [];
-        public List<OutputPort> OutputPorts { get; } = [];
-        public List<Lamp> Lamps { get; } = [];
-        public List<Gate> Gates { get; } = [];
+        public HashSet<InputPort> InputPorts { get; } = [];
+        public HashSet<OutputPort> OutputPorts { get; } = [];
+        public HashSet<Lamp> Lamps { get; } = [];
+        public HashSet<Gate> Gates { get; } = [];
 
         public static bool HasWire(Tile tile)
         {

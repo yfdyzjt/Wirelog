@@ -132,11 +132,11 @@ namespace Wirelog
                 var inputPos = inputEntry.Key;
                 var input = inputEntry.Value;
 
-                TraceSource(inputPos, input, visitedWires);
+                TraceSource(inputPos, visitedWires);
             }
         }
 
-        private static void TraceSource(Point16 startPos, Input input, HashSet<(Point16, WireType)> visitedWires)
+        private static void TraceSource(Point16 startPos, HashSet<(Point16, WireType)> visitedWires)
         {
             foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
             {
@@ -145,26 +145,6 @@ namespace Wirelog
                     var wire = new Wire() { };
                     TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
                 }
-            }
-        }
-
-        private static void TraceSink(Wire wire, Point16 curPos, int level)
-        {
-            if(_lampsFound.TryGetValue(curPos, out var lamp))
-            {
-                lamp.InputWires.Add(wire);
-                wire.Lamps.Add(lamp);
-            }
-            else if(_gatesFound.TryGetValue(curPos, out var gate))
-            {
-                gate.OutputWires.Add(wire);
-                wire.Gates.Add(gate);
-            }
-            else if(_inputsFound.TryGetValue(curPos, out var input))
-            {
-            }
-            else if(_outputsFound.TryGetValue(curPos, out var output))
-            {
             }
         }
 
@@ -177,7 +157,7 @@ namespace Wirelog
             if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wireType))) return;
 
             visitedWires.Add((curPos, wireType));
-            TraceSink(wire, curPos, level);
+            TraceComponents(wire, curPos, level, visitedWires);
 
             if (JunctionBox.TryGetType(tile, out var junctionBoxType))
             {
@@ -185,15 +165,15 @@ namespace Wirelog
                 switch (junctionBoxType)
                 {
                     case JunctionBoxType.UpDown:
-                        dX = (curPos.X - prevPos.X); 
+                        dX = (curPos.X - prevPos.X);
                         dY = (curPos.Y - prevPos.Y);
                         break;
                     case JunctionBoxType.UpLeft:
-                        dX = -(curPos.Y - prevPos.Y); 
+                        dX = -(curPos.Y - prevPos.Y);
                         dY = -(curPos.X - prevPos.X);
                         break;
                     case JunctionBoxType.UpRight:
-                        dX = (curPos.Y - prevPos.Y); 
+                        dX = (curPos.Y - prevPos.Y);
                         dY = (curPos.X - prevPos.X);
                         break;
                 }
@@ -212,6 +192,74 @@ namespace Wirelog
                     }
                 }
             }
+        }
+
+        private static void TraceComponents(Wire wire, Point16 curPos, int level, HashSet<(Point16, WireType)> visitedWires)
+        {
+            if (_lampsFound.TryGetValue(curPos, out var lamp))
+            {
+                if (TraceGate(lamp, curPos, out var gatePos))
+                {
+                    lamp.InputWires.Add(wire);
+                    wire.Lamps.Add(lamp);
+
+                    TraceSource(gatePos, visitedWires);
+                }
+                else
+                {
+                    _lampsFound.Remove(curPos);
+                }
+            }
+            else if (_gatesFound.TryGetValue(curPos, out var gate))
+            {
+                if (TraceLamp(gate, curPos))
+                {
+                    gate.OutputWires.Add(wire);
+                    wire.Gates.Add(gate);
+                }
+                else
+                {
+                    _gatesFound.Remove(curPos);
+                }
+            }
+            else if (_inputsFound.TryGetValue(curPos, out var input))
+            {
+            }
+            else if (_outputsFound.TryGetValue(curPos, out var output))
+            {
+            }
+        }
+
+        private static bool TraceGate(Lamp lamp, Point16 lampPos, out Point16 gatePos)
+        {
+            bool hasGate = false;
+            if (lamp.OutputGate == null)
+            {
+                for (int y = curPos.Y; ; y++)
+                {
+                    if (Lamp.TryGetType(Main.tile[curPos.X, y], out var type))
+                    {
+
+                    }
+                    else
+                    {
+
+                    }
+                }
+
+            }
+
+            if (lamp.Type == LampType.On || lamp.Type == LampType.Off)
+
+
+                return hasGate;
+        }
+        private static bool TraceLamp(Gate gate, Point16 gatePos)
+        {
+            bool hasLamp = false;
+
+
+            return hasLamp;
         }
     }
 }

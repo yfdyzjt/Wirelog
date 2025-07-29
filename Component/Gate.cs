@@ -8,8 +8,8 @@ namespace Wirelog
     public class Gate
     {
         public GateType Type { get; set; }
-        public List<Lamp> InputLamps { get; } = [];
-        public List<Wire> OutputWires { get; } = [];
+        public HashSet<Lamp> InputLamps { get; } = [];
+        public HashSet<Wire> OutputWires { get; } = [];
         public static bool TryGetType(Tile tile, out GateType type)
         {
             if (tile == null || !tile.HasTile) { type = GateType.None; return false; }

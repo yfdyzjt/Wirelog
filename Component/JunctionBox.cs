@@ -7,10 +7,6 @@ namespace Wirelog
 {
     public class JunctionBox
     {
-        public static bool HasJunction(Tile tile)
-        {
-            return tile.TileType == TileID.WirePipe || tile.TileType == TileID.PixelBox;
-        }
         public static bool TryGetType(Tile tile, out JunctionBoxType type)
         {
             if (tile == null || !tile.HasTile) { type = JunctionBoxType.None; return false; }

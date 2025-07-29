@@ -6,6 +6,6 @@ namespace Wirelog
 {
     public class InputPort
     {
-        public List<Wire> OutputWires { get; } = [];
+        public HashSet<Wire> OutputWires { get; } = [];
     }
 }

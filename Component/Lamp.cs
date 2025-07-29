@@ -8,7 +8,7 @@ namespace Wirelog
     public class Lamp
     {
         public LampType Type { get; set; }
-        public List<Wire> InputWires { get; } = [];
+        public HashSet<Wire> InputWires { get; } = [];
         public Gate OutputGate { get; set; }
         public static bool TryGetType(Tile tile, out LampType type)
         {
