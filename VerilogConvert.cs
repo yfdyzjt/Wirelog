@@ -94,93 +94,59 @@ namespace Wirelog
 
         private static string GetInputPortMoudleString(InputPort inputPort)
         {
-            string moduleName = "Input_" +
-                (inputPort.OutputWires.Count == 1 ?
-                $"Single" :
-                $"Multi #( .OUTPUT_COUNT({inputPort.OutputWires.Count}) )");
-            string outputWiresNames = inputPort.OutputWires.Count == 1
-                ? $"wires[{inputPort.OutputWires.First().Id}]"
-                : $"{{{string.Join(", ", inputPort.OutputWires.Select(w => $"wires[{w.Id}]"))}}}";
+            var moduleType = inputPort.OutputWires.Count == 1 ? "Single" : "Multi";
+            var parameters = moduleType == "Multi" ? $" #(.OUTPUT_COUNT({inputPort.OutputWires.Count}))" : "";
+            var moduleName = $"Input_{moduleType}{parameters}";
 
-            return $"{moduleName} i_{inputPort.Id} (" +
-                   $".in(in[{inputPort.Id}]), " +
-                   $".out({outputWiresNames})" +
-                   ");";
+            var outputWires = GetWireNames(inputPort.OutputWires);
+
+            return $"{moduleName} i_{inputPort.Id} (.in(in[{inputPort.Id}]), .out({outputWires}));";
         }
 
         private static string GetOutputPortMoudleString(OutputPort outputPort)
         {
-            return
-                $"Output_Single o_{outputPort.Id} (" +
-                $".clk(clk), " +
-                $".logic_reset(logic_reset), " +
-                $".in(wires[{outputPort.InputWire}]), " +
-                $".out(out[{outputPort.Id}])" +
-                $");";
+            return $"Output_Single o_{outputPort.Id} (.clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire}]), .out(out[{outputPort.Id}]));";
         }
 
         private static string GetLampMoudleString(Lamp lamp)
         {
-            string moduleName = "Lamp_" +
-                (lamp.InputWires.Count == 1 ? "Single_" : "Multi_") +
-                lamp.Type switch
-                {
-                    LampType.On => "On",
-                    LampType.Off => "Off",
-                    LampType.Fault => "Fault",
-                    _ => "None"
-                } +
-                (lamp.InputWires.Count == 1 ?
-                "" :
-                $" #( .INPUT_COUNT({lamp.InputWires.Count}) )");
-            string inputWiresNames = lamp.InputWires.Count == 1
-                ? $"wires[{lamp.InputWires.First().Id}]"
-                : $"{{{string.Join(", ", lamp.InputWires.Select(w => $"wires[{w.Id}]"))}}}";
-            return $"{moduleName} l_{lamp.Id} (" +
-                   $".clk(clk), " +
-                   $".logic_reset(logic_reset), " +
-                   $".in({inputWiresNames}), " +
-                   $".out(lamps[{lamp.Id}])" +
-                   ");";
+            var moduleType = lamp.InputWires.Count == 1 ? "Single" : "Multi";
+            var parameters = moduleType == "Multi" ? $" #(.INPUT_COUNT({lamp.InputWires.Count}))" : "";
+            var moduleName = $"Lamp_{moduleType}_{lamp.Type}{parameters}";
+
+            var inputWires = GetWireNames(lamp.InputWires);
+
+            return $"{moduleName} l_{lamp.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
         }
 
         private static string GetGateMoudleString(Gate gate)
         {
-            string moduleName = "Gate_" +
-                (gate.InputLamps.Count == 1 ? "Single_" : "Multi_") +
-                (gate.OutputWires.Count == 1 ? "Single_" : "Multi_") +
-                gate.Type switch
-                {
-                    GateType.AND => "AND",
-                    GateType.OR => "OR",
-                    GateType.NAND => "NAND",
-                    GateType.NOR => "NOR",
-                    GateType.XOR => "XOR",
-                    GateType.XNOR => "XNOR",
-                    _ => "None"
-                };
-            List<string> parameters = [];
-            if (gate.InputLamps.Count != 1)
-            {
-                parameters.Add($".INPUT_COUNT({gate.InputLamps.Count})");
-            }
-            if (gate.OutputWires.Count != 1)
-            {
-                parameters.Add($".OUTPUT_COUNT({gate.OutputWires.Count})");
-            }
-            moduleName += $" #( {string.Join(", ", parameters)} )";
-            string inputLampsNames = gate.InputLamps.Count == 1
-                ? $"lamps[{gate.InputLamps.First().Id}]"
-                : $"{{{string.Join(", ", gate.InputLamps.Select(l => $"lamps[{l.Id}]"))}}}";
-            string outputWiresNames = gate.OutputWires.Count == 1
-                ? $"wires[{gate.OutputWires.First().Id}]"
-                : $"{{{string.Join(", ", gate.OutputWires.Select(w => $"wires[{w.Id}]"))}}}";
-            return $"{moduleName} g_{gate.Id} (" +
-                   $".clk(clk), " +
-                   $".logic_reset(logic_reset), " +
-                   $".in({inputLampsNames}), " +
-                   $".out({outputWiresNames})" +
-                   ");";
+            var inputType = gate.InputLamps.Count == 1 ? "Single" : "Multi";
+            var outputType = gate.OutputWires.Count == 1 ? "Single" : "Multi";
+
+            var parameters = new List<string>();
+            if (inputType == "Multi") parameters.Add($".INPUT_COUNT({gate.InputLamps.Count})");
+            if (outputType == "Multi") parameters.Add($".OUTPUT_COUNT({gate.OutputWires.Count})");
+            var parameterString = parameters.Count > 0 ? $" #({string.Join(", ", parameters)})" : "";
+
+            var moduleName = $"Gate_{inputType}_{outputType}_{gate.Type}{parameterString}";
+
+            var inputLamps = GetWireNames(gate.InputLamps);
+            var outputWires = GetWireNames(gate.OutputWires);
+
+            return $"{moduleName} g_{gate.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .out({outputWires}));";
+        }
+
+        private static string GetWireNames(ICollection<Wire> wires)
+        {
+            if (wires.Count == 1) return $"wires[{wires.First().Id}]";
+            return $"{{{string.Join(", ", wires.Select(w => $"wires[{w.Id}]"))}}}";
+        }
+
+        private static string GetWireNames(ICollection<Lamp> lamps)
+        {
+            if (lamps.Count == 1) return $"lamps[{lamps.First().Id}]";
+            return $"{{{string.Join(", ", lamps.Select(l => $"lamps[{l.Id}]"))}}}";
         }
     }
 }

@@ -15,5 +15,11 @@ namespace Wirelog
         private static readonly Dictionary<int, InputPort> _inputsPortFound = [];
         private static readonly Dictionary<int, OutputPort> _outputsPortFound = [];
 
+        public static void Convert()
+        {
+            Preprocess();
+            Prune();
+            VerilogConvert();
+        }
     }
 }
