@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Wirelog
 {
@@ -8,6 +9,7 @@ namespace Wirelog
         {
             PruneFaultLamps();
             PruneUnusedComponents();
+            MergeInputPorts();
         }
 
         private static void PruneFaultLamps()
@@ -122,6 +124,46 @@ namespace Wirelog
                 _wires.Remove(wire);
             }
             return true;
+        }
+
+        private static void MergeInputPorts()
+        {
+            var inputPortGroups = new Dictionary<string, List<InputPort>>();
+
+            foreach (var input in _inputsFound.Values)
+            {
+                var key = string.Join(",", input.InputPort.OutputWires.Order().ToString());
+                if (!inputPortGroups.TryGetValue(key, out List<InputPort> value))
+                {
+                    inputPortGroups[key] = [];
+                }
+                value.Add(input.InputPort);
+            }
+
+            foreach (var group in inputPortGroups.Values)
+            {
+                if (group.Count <= 1) continue;
+
+                var primaryInputport = group[0];
+                for (int i = 1; i < group.Count; i++)
+                {
+                    var inputPortToMerge = group[i];
+
+                    foreach(var input in inputPortToMerge.Inputs)
+                    {
+                        primaryInputport.Inputs.Add(input);
+                        inputPortToMerge.Inputs.Remove(input);
+                        input.InputPort = primaryInputport;
+                    }
+                    foreach(var wire in inputPortToMerge.OutputWires)
+                    {
+                        primaryInputport.OutputWires.Add(wire);
+                        inputPortToMerge.OutputWires.Remove(wire);
+                        wire.InputPorts.Add(primaryInputport);
+                        wire.InputPorts.Remove(inputPortToMerge);
+                    }
+                }
+            }
         }
     }
 }
