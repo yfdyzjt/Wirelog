@@ -27,6 +27,8 @@ namespace Wirelog
             if (inputsToRemove.Count == 0) return false;
             foreach (var kv in inputsToRemove)
             {
+                kv.Value.InputPort.Inputs.Remove(kv.Value);
+                kv.Value.InputPort = null;
                 _inputsFound.Remove(kv.Key);
             }
             return true;
@@ -38,6 +40,8 @@ namespace Wirelog
             if (outputsToRemove.Count == 0) return false;
             foreach (var kv in outputsToRemove)
             {
+                kv.Value.OutputPort.Output = null;
+                kv.Value.OutputPort = null;
                 _outputsFound.Remove(kv.Key);
             }
             return true;
