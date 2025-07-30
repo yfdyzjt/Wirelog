@@ -6,6 +6,7 @@ namespace Wirelog
 {
     public class Input
     {
+        public int Id { get; set; }
         public InputType Type { get; set; }
         public Point16 Pos { get; set; }
         public InputPort InputPort { get; set; }

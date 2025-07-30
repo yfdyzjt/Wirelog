@@ -7,6 +7,7 @@ namespace Wirelog
 {
     public class Lamp
     {
+        public int Id { get; set; }
         public LampType Type { get; set; }
         public Point16 Pos { get; set; }
         public HashSet<Wire> InputWires { get; } = [];

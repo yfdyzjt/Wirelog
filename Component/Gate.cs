@@ -7,6 +7,7 @@ namespace Wirelog
 {
     public class Gate
     {
+        public int Id { get; set; }
         public GateType Type { get; set; }
         public Point16 Pos { get; set; }
         public HashSet<Lamp> InputLamps { get; } = [];

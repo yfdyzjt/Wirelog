@@ -148,7 +148,6 @@ namespace Wirelog
                 for (int i = 1; i < group.Count; i++)
                 {
                     var inputPortToMerge = group[i];
-
                     foreach(var input in inputPortToMerge.Inputs)
                     {
                         primaryInputport.Inputs.Add(input);
