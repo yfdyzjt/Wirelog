@@ -6,10 +6,44 @@ namespace Wirelog
     {
         private static void Prune()
         {
-            do
-            {
+            PruneFaultLamps();
+            PruneUnusedComponents();
+        }
 
-            } while ();
+        private static void PruneFaultLamps()
+        {
+            var faultGates = _gatesFound.Where(kv => kv.Value.Type == GateType.Fault);
+            foreach (var kv in faultGates)
+            {
+                var lamps = kv.Value.InputLamps.OrderByDescending(l => l.Pos.Y);
+                var faultLamp = lamps.First(l => l.Type == LampType.Fault);
+                foreach (var lamp in lamps)
+                {
+                    if (lamp.Pos.Y < faultLamp.Pos.Y)
+                    {
+                        kv.Value.InputLamps.Remove(lamp);
+                        lamp.OutputGate = null;
+                        if (lamp.Type == LampType.Fault)
+                        {
+                            foreach (var wire in lamp.InputWires)
+                            {
+                                wire.Lamps.Add(faultLamp);
+                                faultLamp.InputWires.Add(wire);
+                            }
+                        }
+                        foreach (var wire in lamp.InputWires)
+                        {
+                            wire.Lamps.Remove(lamp);
+                            lamp.InputWires.Remove(wire);
+                        }
+                        _lampsFound.Remove(lamp.Pos);
+                    }
+                }
+            }
+        }
+
+        private static void PruneUnusedComponents()
+        {
             bool changed = false;
             do
             {
@@ -21,7 +55,7 @@ namespace Wirelog
             } while (changed);
         }
 
-        private static bool PruneUnusedInputs() 
+        private static bool PruneUnusedInputs()
         {
             var inputsToRemove = _inputsFound.Where(kv => kv.Value.InputPort == null || kv.Value.InputPort.OutputWires.Count == 0).ToList();
             if (inputsToRemove.Count == 0) return false;
@@ -53,7 +87,7 @@ namespace Wirelog
             if (gatesToRemove.Count == 0) return false;
             foreach (var gate in gatesToRemove)
             {
-                foreach(var wire in gate.OutputWires)
+                foreach (var wire in gate.OutputWires)
                     wire.Gates.Remove(gate);
                 foreach (var lamp in gate.InputLamps)
                     lamp.OutputGate = null;

@@ -174,13 +174,10 @@ namespace Wirelog
         {
             if (_lampsFound.TryGetValue(curPos, out var foundLamp))
             {
-                if (TraceGate(foundLamp, curPos, out var foundGate))
+                if (TraceGate(foundLamp, out var foundGate))
                 {
                     foundLamp.InputWires.Add(wire);
                     wire.Lamps.Add(foundLamp);
-
-                    foundLamp.OutputGate = foundGate;
-                    foundGate.InputLamps.Add(foundLamp);
 
                     TraceSource(foundGate.Pos, visitedWires);
                 }
@@ -191,10 +188,16 @@ namespace Wirelog
             }
             else if (_gatesFound.TryGetValue(curPos, out var foundGate))
             {
-                if (TraceLamp(foundGate, curPos))
+                if (TraceLamp(foundGate, out var foundLamps))
                 {
                     foundGate.OutputWires.Add(wire);
                     wire.Gates.Add(foundGate);
+
+                    foreach(var lamp in foundLamps)
+                    {
+                        lamp.OutputGate = foundGate;
+                        foundGate.InputLamps.Add(lamp);
+                    }
                 }
                 else
                 {
@@ -223,13 +226,13 @@ namespace Wirelog
             }
         }
 
-        private static bool TraceGate(Lamp lamp, Point16 lampPos, out Gate outGate)
+        private static bool TraceGate(Lamp lamp, out Gate outGate)
         {
             if (lamp.OutputGate == null)
             {
                 for (int y = 1; ; y++)
                 {
-                    var curPos = new Point16(lampPos.X, lampPos.Y + y);
+                    var curPos = new Point16(lamp.Pos.X, lamp.Pos.Y + y);
                     if (_gatesFound.TryGetValue(curPos, out var gate))
                     {
                         outGate = gate;
@@ -249,16 +252,22 @@ namespace Wirelog
             }
         }
 
-        private static bool TraceLamp(Gate gate, Point16 gatePos)
+        private static bool TraceLamp(Gate gate, out List<Lamp> outLamps)
         {
-            if (gate.InputLamps.Count == 0)
+            outLamps = []; 
+            for (int y = -1; ; y--)
             {
-                return _lampsFound.ContainsKey(new Point16(gatePos.X, gatePos.Y - 1));
+                var curPos = new Point16(gate.Pos.X, gate.Pos.Y + y);
+                if (_lampsFound.TryGetValue(curPos, out var lamp))
+                {
+                    outLamps.Add(lamp);
+                }
+                else
+                {
+                    break;
+                }
             }
-            else
-            {
-                return true;
-            }
+            return outLamps.Count != 0;
         }
     }
 }
