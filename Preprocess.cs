@@ -8,19 +8,13 @@ namespace Wirelog
 {
     public partial class Converter
     {
-        private static readonly Dictionary<Point16, Input> _inputsFound = [];
-        private static readonly Dictionary<Point16, Output> _outputsFound = [];
-        private static readonly Dictionary<Point16, Gate> _gatesFound = [];
-        private static readonly Dictionary<Point16, Lamp> _lampsFound = [];
-
-        private static readonly List<Wire> _wires = [];
-
         private static void Preprocess()
         {
             _inputsFound.Clear();
             _outputsFound.Clear();
             _gatesFound.Clear();
             _lampsFound.Clear();
+            _wires.Clear();
 
             HashSet<Point16> _processedTiles = [];
 
@@ -124,6 +118,7 @@ namespace Wirelog
                 if (Wire.HasWire(Main.tile[startPos], wireType))
                 {
                     var wire = new Wire();
+                    _wires.Add(wire);
                     TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
                 }
             }
