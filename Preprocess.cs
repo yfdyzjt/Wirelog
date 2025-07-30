@@ -20,6 +20,8 @@ namespace Wirelog
 
             for (int x = 0; x < Main.maxTilesX; x++)
             {
+                if (x % Math.Max(1, Main.maxTilesX / 100) == 0)
+                    Main.statusText = $"preprocess {x * 1f / Main.maxTilesX:P1}";
                 for (int y = 0; y < Main.maxTilesY; y++)
                 {
                     var pos = new Point16(x, y);
@@ -104,9 +106,12 @@ namespace Wirelog
 
         private static void ConnectComponents()
         {
+            int i = 0;
             var visitedWires = new HashSet<(Point16, WireType)>();
             foreach (var inputEntry in _inputsFound)
             {
+                if (i % Math.Max(1, _inputsFound.Count / 100) == 0)
+                    Main.statusText = $"connect components {i++ * 1f / _inputsFound.Count:P1}";
                 TraceSource(inputEntry.Key, visitedWires);
             }
         }
@@ -193,7 +198,7 @@ namespace Wirelog
                     foundGate.OutputWires.Add(wire);
                     wire.Gates.Add(foundGate);
 
-                    foreach(var lamp in foundLamps)
+                    foreach (var lamp in foundLamps)
                     {
                         lamp.OutputGate = foundGate;
                         foundGate.InputLamps.Add(lamp);
@@ -254,7 +259,7 @@ namespace Wirelog
 
         private static bool TraceLamp(Gate gate, out List<Lamp> outLamps)
         {
-            outLamps = []; 
+            outLamps = [];
             for (int y = -1; ; y--)
             {
                 var curPos = new Point16(gate.Pos.X, gate.Pos.Y + y);

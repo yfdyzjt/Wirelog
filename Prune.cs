@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Terraria;
 
 namespace Wirelog
 {
@@ -7,8 +8,11 @@ namespace Wirelog
     {
         private static void Prune()
         {
+            Main.statusText = $"prune fault lamps";
             PruneFaultLamps();
+            Main.statusText = $"prune unused components";
             PruneUnusedComponents();
+            Main.statusText = $"merge input ports";
             MergeInputPorts();
         }
 

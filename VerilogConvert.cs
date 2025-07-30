@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Terraria;
 
 namespace Wirelog
 {
@@ -8,10 +9,11 @@ namespace Wirelog
     {
         private static void VerilogConvert()
         {
+            Main.statusText = "set component id";
             SetComponentId();
 
+            Main.statusText = "convert verilog";
             var sb = new StringBuilder();
-
             sb.AppendLine($"""
                 module Wiring (
                     input wire clk,
