@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Terraria.DataStructures;
 
 namespace Wirelog
 {
-    public partial class Converter
+    public static partial class Converter
     {
         private static readonly Dictionary<Point16, Input> _inputsFound = [];
         private static readonly Dictionary<Point16, Output> _outputsFound = [];
@@ -17,6 +17,7 @@ namespace Wirelog
 
         public static void Convert()
         {
+            LoadVModules();
             Preprocess();
             Prune();
             VerilogConvert();

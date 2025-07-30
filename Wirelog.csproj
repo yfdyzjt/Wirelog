@@ -10,4 +10,9 @@
 
 	<!-- References -->
 
+	<ItemGroup>
+		<EmbeddedResource Include="VModule\**\*.v" />
+		<EmbeddedResource Include="VModule\**\*.cpp" />
+	</ItemGroup>
+
 </Project>

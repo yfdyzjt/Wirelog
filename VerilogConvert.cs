@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Wirelog
 {
-    public partial class Converter
+    public static partial class Converter
     {
         private static void VerilogConvert()
         {
@@ -56,6 +56,15 @@ namespace Wirelog
             sb.AppendLine($"""
                 endmodule
                 """);
+
+            WriteVerilogToFile(sb.ToString());
+        }
+
+        private static void WriteVerilogToFile(string verilogCode)
+        {
+            var outputDir = "./Wirelog";
+            WriteVModules(outputDir);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(outputDir, "Wiring.v"), verilogCode);
         }
 
         private static void SetComponentId()

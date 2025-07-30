@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Wirelog
 {
-    public partial class Converter
+    public static partial class Converter
     {
         private static void Prune()
         {

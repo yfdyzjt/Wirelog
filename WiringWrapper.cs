@@ -77,7 +77,7 @@ namespace Wirelog
                             if (Math.IEEERemainder(_mechTime[i], num) == 0.0)
                             {
                                 _mechTime[i] = 18000;
-                                BigTripWire(mechX, mechY, 1, 1);
+                                // BigTripWire(mechX, mechY, 1, 1);
                             }
                         }
                     }
@@ -86,7 +86,7 @@ namespace Wirelog
                         if (Main.tile[mechX, mechY].HasTile && Main.tile[mechX, mechY].TileType == 144)
                         {
                             Main.tile[mechX, mechY].TileFrameY = 0;
-                            NetMessage.SendTileSquare(-1, mechX, mechY, TileChangeType.None);
+                            // NetMessage.SendTileSquare(-1, mechX, mechY, TileChangeType.None);
                         }
                         if (Main.tile[mechX, mechY].HasTile && Main.tile[mechX, mechY].TileType == 411)
                         {
@@ -110,7 +110,7 @@ namespace Wirelog
                                     }
                                 }
                             }
-                            NetMessage.SendTileSquare(-1, num4, num5, 2, 2, TileChangeType.None);
+                            // NetMessage.SendTileSquare(-1, num4, num5, 2, 2, TileChangeType.None);
                         }
                         for (var l = i; l < _numMechs; l++)
                         {
