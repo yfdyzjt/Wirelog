@@ -1,35 +1,19 @@
-using Ionic.BZip2;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using Terraria;
 using Terraria.DataStructures;
-using Terraria.ID;
-using Terraria.ModLoader;
-using static log4net.Appender.ColoredConsoleAppender;
 
 namespace Wirelog
 {
-    public class Converter
+    public partial class Converter
     {
-        public static readonly Dictionary<Point16, int> posInputIdMap = [];
-        public static readonly Dictionary<int, Point16> posOutputIdMap = [];
-
-        private static readonly List<InputPort> _inputPorts = [];
-        private static readonly List<OutputPort> _outputPorts = [];
-        private static readonly List<Gate> _gates = [];
-        private static readonly List<Lamp> _lamps = [];
-        private static readonly List<Wire> _wires = [];
-
         private static readonly Dictionary<Point16, Input> _inputsFound = [];
         private static readonly Dictionary<Point16, Output> _outputsFound = [];
         private static readonly Dictionary<Point16, Gate> _gatesFound = [];
         private static readonly Dictionary<Point16, Lamp> _lampsFound = [];
 
-        private static readonly HashSet<Point16> _processedTiles = [];
+        private static readonly List<Wire> _wires = [];
 
         private static void Preprocess()
         {
@@ -38,7 +22,7 @@ namespace Wirelog
             _gatesFound.Clear();
             _lampsFound.Clear();
 
-            _processedTiles.Clear();
+            HashSet<Point16> _processedTiles = [];
 
             for (int x = 0; x < Main.maxTilesX; x++)
             {
@@ -66,14 +50,15 @@ namespace Wirelog
                         if (hasWire)
                         {
                             var input = new Input { Type = inputType, Pos = pos };
-
                             for (int i = 0; i < sizeX; i++)
                             {
                                 for (int j = 0; j < sizeY; j++)
                                 {
                                     var curPos = new Point16(x + i, y + j);
                                     if (Wire.HasWire(Main.tile[curPos]))
+                                    {
                                         _inputsFound.Add(curPos, input);
+                                    }
                                 }
                             }
                         }
@@ -100,7 +85,9 @@ namespace Wirelog
                                 {
                                     var curPos = new Point16(x + i, y + j);
                                     if (Wire.HasWire(Main.tile[curPos]))
+                                    {
                                         _outputsFound.Add(curPos, output);
+                                    }
                                 }
                             }
                         }
@@ -108,12 +95,12 @@ namespace Wirelog
                     else if (Gate.TryGetType(tile, out var gateType))
                     {
                         _processedTiles.Add(pos);
-                        _gatesFound.Add(pos, new Gate { Type = gateType });
+                        _gatesFound.Add(pos, new Gate { Type = gateType, Pos = pos });
                     }
                     else if (Lamp.TryGetType(tile, out var lampType))
                     {
                         _processedTiles.Add(pos);
-                        _lampsFound.Add(pos, new Lamp { Type = lampType });
+                        _lampsFound.Add(pos, new Lamp { Type = lampType, Pos = pos });
                     }
                 }
             }
@@ -124,15 +111,9 @@ namespace Wirelog
         private static void ConnectComponents()
         {
             var visitedWires = new HashSet<(Point16, WireType)>();
-
-            foreach (var inputEntry in _inputsFound.ToList())
+            foreach (var inputEntry in _inputsFound)
             {
-                if (!_inputsFound.ContainsKey(inputEntry.Key)) continue;
-
-                var inputPos = inputEntry.Key;
-                var input = inputEntry.Value;
-
-                TraceSource(inputPos, visitedWires);
+                TraceSource(inputEntry.Key, visitedWires);
             }
         }
 
@@ -142,7 +123,7 @@ namespace Wirelog
             {
                 if (Wire.HasWire(Main.tile[startPos], wireType))
                 {
-                    var wire = new Wire() { };
+                    var wire = new Wire();
                     TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
                 }
             }
@@ -196,70 +177,93 @@ namespace Wirelog
 
         private static void TraceComponents(Wire wire, Point16 curPos, int level, HashSet<(Point16, WireType)> visitedWires)
         {
-            if (_lampsFound.TryGetValue(curPos, out var lamp))
+            if (_lampsFound.TryGetValue(curPos, out var foundLamp))
             {
-                if (TraceGate(lamp, curPos, out var gatePos))
+                if (TraceGate(foundLamp, curPos, out var foundGate))
                 {
-                    lamp.InputWires.Add(wire);
-                    wire.Lamps.Add(lamp);
+                    foundLamp.InputWires.Add(wire);
+                    wire.Lamps.Add(foundLamp);
 
-                    TraceSource(gatePos, visitedWires);
+                    foundLamp.OutputGate = foundGate;
+                    foundGate.InputLamps.Add(foundLamp);
+
+                    TraceSource(foundGate.Pos, visitedWires);
                 }
                 else
                 {
                     _lampsFound.Remove(curPos);
                 }
             }
-            else if (_gatesFound.TryGetValue(curPos, out var gate))
+            else if (_gatesFound.TryGetValue(curPos, out var foundGate))
             {
-                if (TraceLamp(gate, curPos))
+                if (TraceLamp(foundGate, curPos))
                 {
-                    gate.OutputWires.Add(wire);
-                    wire.Gates.Add(gate);
+                    foundGate.OutputWires.Add(wire);
+                    wire.Gates.Add(foundGate);
                 }
                 else
                 {
                     _gatesFound.Remove(curPos);
                 }
             }
-            else if (_inputsFound.TryGetValue(curPos, out var input))
+            else if (_inputsFound.TryGetValue(curPos, out var foundInput))
             {
+                if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
+                {
+                    foundInput.InputPort ??= new InputPort();
+                    foundInput.InputPort.Inputs.Add(foundInput);
+                    foundInput.InputPort.OutputWires.Add(wire);
+                    wire.InputPorts.Add(foundInput.InputPort);
+                }
             }
-            else if (_outputsFound.TryGetValue(curPos, out var output))
+            else if (_outputsFound.TryGetValue(curPos, out var foundOutput))
             {
+                if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
+                {
+                    foundOutput.OutputPort ??= new OutputPort();
+                    foundOutput.OutputPort.Output = foundOutput;
+                    foundOutput.OutputPort.InputWire = wire;
+                    wire.OutputPorts.Add(foundOutput.OutputPort);
+                }
             }
         }
 
-        private static bool TraceGate(Lamp lamp, Point16 lampPos, out Point16 gatePos)
+        private static bool TraceGate(Lamp lamp, Point16 lampPos, out Gate outGate)
         {
-            bool hasGate = false;
             if (lamp.OutputGate == null)
             {
-                for (int y = curPos.Y; ; y++)
+                for (int y = 1; ; y++)
                 {
-                    if (Lamp.TryGetType(Main.tile[curPos.X, y], out var type))
+                    var curPos = new Point16(lampPos.X, lampPos.Y + y);
+                    if (_gatesFound.TryGetValue(curPos, out var gate))
                     {
-
+                        outGate = gate;
+                        return true;
                     }
-                    else
+                    else if (!_lampsFound.ContainsKey(curPos))
                     {
-
+                        outGate = null;
+                        return false;
                     }
                 }
-
             }
-
-            if (lamp.Type == LampType.On || lamp.Type == LampType.Off)
-
-
-                return hasGate;
+            else
+            {
+                outGate = lamp.OutputGate;
+                return true;
+            }
         }
+
         private static bool TraceLamp(Gate gate, Point16 gatePos)
         {
-            bool hasLamp = false;
-
-
-            return hasLamp;
+            if (gate.InputLamps.Count == 0)
+            {
+                return _lampsFound.ContainsKey(new Point16(gatePos.X, gatePos.Y - 1));
+            }
+            else
+            {
+                return true;
+            }
         }
     }
 }

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Terraria;
+﻿using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
 
@@ -10,6 +8,7 @@ namespace Wirelog
     {
         public InputType Type { get; set; }
         public Point16 Pos { get; set; }
+        public InputPort InputPort { get; set; }
         public static bool TryGetType(Tile tile, out InputType type)
         {
             if (tile == null || !tile.HasTile) { type = InputType.None; return false; }

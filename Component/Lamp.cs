@@ -1,6 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Terraria;
+using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog
@@ -8,6 +8,7 @@ namespace Wirelog
     public class Lamp
     {
         public LampType Type { get; set; }
+        public Point16 Pos { get; set; }
         public HashSet<Wire> InputWires { get; } = [];
         public Gate OutputGate { get; set; }
         public static bool TryGetType(Tile tile, out LampType type)

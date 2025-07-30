@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Terraria;
+﻿using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
 
@@ -10,7 +8,7 @@ namespace Wirelog
     {
         public OutputType Type { get; set; }
         public Point16 Pos { get; set; }
-        public Wire InputWire { get; set; }
+        public OutputPort OutputPort { get; set; }
         public static bool TryGetType(Tile tile, out OutputType type)
         {
             if (tile == null || !tile.HasTile) { type = OutputType.None; return false; }
@@ -18,9 +16,9 @@ namespace Wirelog
             type = tile.TileType switch
             {
                 TileID.Timers => OutputType.Timers,
-                TileID.ConveyorBeltLeft or 
+                TileID.ConveyorBeltLeft or
                 TileID.ConveyorBeltRight => OutputType.ConveyorBelts,
-                ushort id when TileID.AmethystGemsparkOff <= id && id <= TileID.AmberGemspark 
+                ushort id when TileID.AmethystGemsparkOff <= id && id <= TileID.AmberGemspark
                 => OutputType.Gemsparks,
                 TileID.Chimney => OutputType.Chimney,
                 TileID.SillyBalloonMachine => OutputType.SillyBalloonMachine,
@@ -32,11 +30,11 @@ namespace Wirelog
                 TileID.Cannon => OutputType.Cannons,
                 TileID.SnowballLauncher => OutputType.SnowballLauncher,
                 TileID.Campfire => OutputType.Campfires,
-                TileID.ActiveStoneBlock or 
+                TileID.ActiveStoneBlock or
                 TileID.InactiveStoneBlock => OutputType.ActiveStoneBlocks,
                 TileID.TrapdoorOpen => OutputType.TrapdoorOpen,
                 TileID.TrapdoorClosed => OutputType.TrapdoorClosed,
-                TileID.TallGateOpen or 
+                TileID.TallGateOpen or
                 TileID.TallGateClosed => OutputType.TallGates,
                 TileID.OpenDoor => OutputType.OpenDoors,
                 TileID.ClosedDoor => OutputType.ClosedDoors,
@@ -61,9 +59,9 @@ namespace Wirelog
                 TileID.VolcanoSmall => OutputType.VolcanoSmall,
                 TileID.VolcanoLarge => OutputType.VolcanoLarge,
                 TileID.Chandeliers => OutputType.Chandeliers,
-                TileID.MinecartTrack when (30 <= tile.TileFrameX && tile.TileFrameX < 36) || 
-                (0 <= tile.TileFrameX && tile.TileFrameX < 20 && 
-                23 < tile.TileFrameX && tile.TileFrameX < 30 && 
+                TileID.MinecartTrack when (30 <= tile.TileFrameX && tile.TileFrameX < 36) ||
+                (0 <= tile.TileFrameX && tile.TileFrameX < 20 &&
+                23 < tile.TileFrameX && tile.TileFrameX < 30 &&
                 tile.TileFrameY != -1) => OutputType.MinecartTrack, // check
                 TileID.Candles or
                 TileID.PlatinumCandle or
@@ -89,8 +87,8 @@ namespace Wirelog
                 TileID.BoulderStatue or
                 TileID.MushroomStatue or
                 TileID.CatBast => OutputType.Statues,
-                TileID.Statues when !(tile.TileFrameX / 36 is 0 or 1 or 3 or 6 or 11 or 12 or 14 or 15 or 19 or 
-                20 or 21 or 22 or 24 or 25 or 26 or 29 or 31 or 32 or 33 or 36 or 38 or 39 or 43 or 44 or 45) 
+                TileID.Statues when !(tile.TileFrameX / 36 is 0 or 1 or 3 or 6 or 11 or 12 or 14 or 15 or 19 or
+                20 or 21 or 22 or 24 or 25 or 26 or 29 or 31 or 32 or 33 or 36 or 38 or 39 or 43 or 44 or 45)
                 => OutputType.Statues, // check
                 TileID.Grate or
                 TileID.GrateClosed => OutputType.Grates,
