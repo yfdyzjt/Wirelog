@@ -6,6 +6,7 @@ namespace Wirelog
     public class Wire
     {
         public int Id { get; set; }
+        public WireType Type { get; set; }
         public HashSet<InputPort> InputPorts { get; } = [];
         public HashSet<OutputPort> OutputPorts { get; } = [];
         public HashSet<Lamp> Lamps { get; } = [];

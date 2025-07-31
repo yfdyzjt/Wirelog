@@ -19,9 +19,21 @@ namespace Wirelog
         public static void Convert()
         {
             LoadVModules();
+            AllClear();
             Preprocess();
             Prune();
             VerilogConvert();
+        }
+
+        private static void AllClear()
+        {
+            _inputsFound.Clear();
+            _outputsFound.Clear();
+            _gatesFound.Clear();
+            _lampsFound.Clear();
+            _wires.Clear();
+            _inputsPortFound.Clear();
+            _outputsPortFound.Clear();
         }
     }
 }

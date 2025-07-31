@@ -10,12 +10,6 @@ namespace Wirelog
     {
         private static void Preprocess()
         {
-            _inputsFound.Clear();
-            _outputsFound.Clear();
-            _gatesFound.Clear();
-            _lampsFound.Clear();
-            _wires.Clear();
-
             HashSet<Point16> _processedTiles = [];
 
             for (int x = 0; x < Main.maxTilesX; x++)
@@ -122,9 +116,12 @@ namespace Wirelog
             {
                 if (Wire.HasWire(Main.tile[startPos], wireType))
                 {
-                    var wire = new Wire();
-                    _wires.Add(wire);
-                    TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
+                    if (!visitedWires.Contains((startPos, wireType)))
+                    {
+                        var wire = new Wire() { Type = wireType };
+                        _wires.Add(wire);
+                        TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
+                    }
                 }
             }
         }
@@ -135,6 +132,7 @@ namespace Wirelog
 
             Tile tile = Main.tile[curPos];
 
+            if (!Wire.HasWire(tile, wire.Type)) return;
             if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wireType))) return;
 
             visitedWires.Add((curPos, wireType));

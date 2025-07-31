@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using Terraria;
+using Terraria.ModLoader;
 
 namespace Wirelog
 {
@@ -34,22 +35,22 @@ namespace Wirelog
                     assign out_width = {_outputsPortFound.Count};
                 """);
 
-            sb.AppendLine("// input port module");
+            sb.AppendLine("    // input port module");
             foreach (var inputPort in _inputsPortFound.Values)
             {
                 sb.AppendLine(GetInputPortMoudleString(inputPort));
             }
-            sb.AppendLine("// output port module");
+            sb.AppendLine("    // output port module");
             foreach (var outputPort in _outputsPortFound.Values)
             {
                 sb.AppendLine(GetOutputPortMoudleString(outputPort));
             }
-            sb.AppendLine("// lamp module");
+            sb.AppendLine("    // lamp module");
             foreach (var lamp in _lampsFound.Values)
             {
                 sb.AppendLine(GetLampMoudleString(lamp));
             }
-            sb.AppendLine("// gate module");
+            sb.AppendLine("    // gate module");
             foreach (var gate in _gatesFound.Values)
             {
                 sb.AppendLine(GetGateMoudleString(gate));
@@ -64,7 +65,7 @@ namespace Wirelog
 
         private static void WriteVerilogToFile(string verilogCode)
         {
-            var outputDir = "./Wirelog";
+            var outputDir = System.IO.Path.Combine(ModLoader.ModPath, "Wirelog");
             WriteVModules(outputDir);
             System.IO.File.WriteAllText(System.IO.Path.Combine(outputDir, "Wiring.v"), verilogCode);
         }
@@ -111,12 +112,12 @@ namespace Wirelog
 
             var outputWires = GetWireNames(inputPort.OutputWires);
 
-            return $"{moduleName} i_{inputPort.Id} (.in(in[{inputPort.Id}]), .out({outputWires}));";
+            return $"    {moduleName} i_{inputPort.Id} (.in(in[{inputPort.Id}]), .out({outputWires}));";
         }
 
         private static string GetOutputPortMoudleString(OutputPort outputPort)
         {
-            return $"Output_Single o_{outputPort.Id} (.clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire}]), .out(out[{outputPort.Id}]));";
+            return $"    Output_Single o_{outputPort.Id} (.clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire}]), .out(out[{outputPort.Id}]));";
         }
 
         private static string GetLampMoudleString(Lamp lamp)
@@ -127,7 +128,7 @@ namespace Wirelog
 
             var inputWires = GetWireNames(lamp.InputWires);
 
-            return $"{moduleName} l_{lamp.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
+            return $"    {moduleName} l_{lamp.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
         }
 
         private static string GetGateMoudleString(Gate gate)
@@ -145,7 +146,7 @@ namespace Wirelog
             var inputLamps = GetWireNames(gate.InputLamps);
             var outputWires = GetWireNames(gate.OutputWires);
 
-            return $"{moduleName} g_{gate.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .out({outputWires}));";
+            return $"    {moduleName} g_{gate.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .out({outputWires}));";
         }
 
         private static string GetWireNames(ICollection<Wire> wires)

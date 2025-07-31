@@ -50,10 +50,10 @@ namespace Wirelog
 
         private static void PruneUnusedComponents()
         {
-            bool changed = false;
+            bool changed;
             do
             {
-                changed |= PruneUnusedOutputs();
+                changed = PruneUnusedOutputs();
                 changed |= PruneUnusedGates();
                 changed |= PruneUnusedLamps();
                 changed |= PruneUnusedWires();
@@ -137,11 +137,9 @@ namespace Wirelog
             foreach (var input in _inputsFound.Values)
             {
                 var key = string.Join(",", input.InputPort.OutputWires.Order().ToString());
-                if (!inputPortGroups.TryGetValue(key, out List<InputPort> value))
-                {
-                    inputPortGroups[key] = [];
-                }
-                value.Add(input.InputPort);
+                var inputPorts = inputPortGroups.GetValueOrDefault(key) ?? [];
+                inputPorts.Add(input.InputPort);
+                inputPortGroups[key] = inputPorts;
             }
 
             foreach (var group in inputPortGroups.Values)
