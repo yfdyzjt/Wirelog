@@ -9,7 +9,7 @@ module Lamp_Multi_Off #(
     
     wire result = ^in;
 
-    Lamp_Logic #( .INIT_VALUE(0) ) lamp_logic (
+    Lamp_Logic #( .INIT_VALUE(0) ) ll (
         .clk(clk),
         .reset(reset),
         .in(result),

@@ -7,7 +7,7 @@ module Lamp_Single_On (
     
     wire result = in;
 
-    Lamp_Logic #( .INIT_VALUE(1) ) lamp_logic (
+    Lamp_Logic #( .INIT_VALUE(1) ) ll (
         .clk(clk),
         .reset(reset),
         .in(result),

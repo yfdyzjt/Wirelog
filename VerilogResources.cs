@@ -25,7 +25,7 @@ namespace Wirelog
                 using var reader = new StreamReader(stream);
                 var content = reader.ReadToEnd();
 
-                var fileName = resourceName[vModulePrefix.Length..].Replace('_', '.');
+                var fileName = resourceName[vModulePrefix.Length..];
 
                 if (fileName.EndsWith(".v"))
                 {

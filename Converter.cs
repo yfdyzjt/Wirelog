@@ -21,7 +21,7 @@ namespace Wirelog
             LoadVModules();
             AllClear();
             Preprocess();
-            Prune();
+            Postprocess();
             VerilogConvert();
         }
 

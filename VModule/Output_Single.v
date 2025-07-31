@@ -7,7 +7,7 @@ module Output_Single (
     
     wire result = in;
 
-    Output_Logic output_logic (
+    Output_Logic ol (
         .clk(clk),
         .logic_reset(logic_reset),
         .in(result),

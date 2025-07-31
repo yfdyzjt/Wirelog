@@ -6,7 +6,7 @@ namespace Wirelog
 {
     public static partial class Converter
     {
-        private static void Prune()
+        private static void Postprocess()
         {
             Main.statusText = $"prune fault lamps";
             PruneFaultLamps();
@@ -14,6 +14,49 @@ namespace Wirelog
             PruneUnusedComponents();
             Main.statusText = $"merge input ports";
             MergeInputPorts();
+            Main.statusText = $"set components id";
+            SetComponentsId();
+            Main.statusText = $"copy multi input wires and output ports";
+            CopyMultiInputWiresAndOutputPorts();
+        }
+
+        private static void CopyMultiInputWiresAndOutputPorts()
+        {
+
+        }
+
+        private static void SetComponentsId()
+        {
+            HashSet<InputPort> inputPorts = _inputsFound.Values.Select(input => input.InputPort).ToHashSet();
+            HashSet<OutputPort> outputPorts = _outputsFound.Values.Select(output => output.OutputPort).ToHashSet();
+
+            int wireId = 0;
+            foreach (var wire in _wires)
+            {
+                wire.Id = wireId++;
+            }
+            int inputId = 0;
+            foreach (var inputPort in inputPorts)
+            {
+                inputPort.Id = inputId++;
+                _inputsPortFound.Add(inputPort.Id, inputPort);
+            }
+            int outputId = 0;
+            foreach (var outputPort in outputPorts)
+            {
+                outputPort.Id = outputId++;
+                _outputsPortFound.Add(outputPort.Id, outputPort);
+            }
+            int lampId = 0;
+            foreach (var lamp in _lampsFound.Values)
+            {
+                lamp.Id = lampId++;
+            }
+            int gateId = 0;
+            foreach (var gate in _gatesFound.Values)
+            {
+                gate.Id = gateId++;
+            }
         }
 
         private static void PruneFaultLamps()
@@ -136,7 +179,7 @@ namespace Wirelog
 
             foreach (var input in _inputsFound.Values)
             {
-                var key = string.Join(",", input.InputPort.OutputWires.Order().ToString());
+                var key = string.Join(",", input.InputPort.OutputWires.Select(w => w.GetHashCode()).Order());
                 var inputPorts = inputPortGroups.GetValueOrDefault(key) ?? [];
                 inputPorts.Add(input.InputPort);
                 inputPortGroups[key] = inputPorts;
@@ -150,13 +193,13 @@ namespace Wirelog
                 for (int i = 1; i < group.Count; i++)
                 {
                     var inputPortToMerge = group[i];
-                    foreach(var input in inputPortToMerge.Inputs)
+                    foreach (var input in inputPortToMerge.Inputs)
                     {
                         primaryInputport.Inputs.Add(input);
                         inputPortToMerge.Inputs.Remove(input);
                         input.InputPort = primaryInputport;
                     }
-                    foreach(var wire in inputPortToMerge.OutputWires)
+                    foreach (var wire in inputPortToMerge.OutputWires)
                     {
                         primaryInputport.OutputWires.Add(wire);
                         inputPortToMerge.OutputWires.Remove(wire);

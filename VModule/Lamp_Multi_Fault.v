@@ -8,7 +8,7 @@ module Lamp_Multi_Fault #(
     
     wire result = |in;
 
-    Lamp_Fault_Logic lamp_fault_logic (
+    Lamp_Fault_Logic ll (
         .clk(clk),
         .in(result),
         .out(out)

@@ -10,9 +10,6 @@ namespace Wirelog
     {
         private static void VerilogConvert()
         {
-            Main.statusText = "set component id";
-            SetComponentId();
-
             Main.statusText = "convert verilog";
             var sb = new StringBuilder();
             sb.AppendLine($"""
@@ -65,43 +62,9 @@ namespace Wirelog
 
         private static void WriteVerilogToFile(string verilogCode)
         {
-            var outputDir = System.IO.Path.Combine(ModLoader.ModPath, "Wirelog");
+            var outputDir = System.IO.Path.Combine(ModLoader.ModPath, "WirelogModule");
             WriteVModules(outputDir);
             System.IO.File.WriteAllText(System.IO.Path.Combine(outputDir, "Wiring.v"), verilogCode);
-        }
-
-        private static void SetComponentId()
-        {
-            HashSet<InputPort> inputPorts = _inputsFound.Values.Select(input => input.InputPort).ToHashSet();
-            HashSet<OutputPort> outputPorts = _outputsFound.Values.Select(output => output.OutputPort).ToHashSet();
-
-            int wireId = 0;
-            foreach (var wire in _wires)
-            {
-                wire.Id = wireId++;
-            }
-            int inputId = 0;
-            foreach (var inputPort in inputPorts)
-            {
-                inputPort.Id = inputId++;
-                _inputsPortFound.Add(inputPort.Id, inputPort);
-            }
-            int outputId = 0;
-            foreach (var outputPort in outputPorts)
-            {
-                outputPort.Id = outputId++;
-                _outputsPortFound.Add(outputPort.Id, outputPort);
-            }
-            int lampId = 0;
-            foreach (var lamp in _lampsFound.Values)
-            {
-                lamp.Id = lampId++;
-            }
-            int gateId = 0;
-            foreach (var gate in _gatesFound.Values)
-            {
-                gate.Id = gateId++;
-            }
         }
 
         private static string GetInputPortMoudleString(InputPort inputPort)
@@ -117,7 +80,7 @@ namespace Wirelog
 
         private static string GetOutputPortMoudleString(OutputPort outputPort)
         {
-            return $"    Output_Single o_{outputPort.Id} (.clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire}]), .out(out[{outputPort.Id}]));";
+            return $"    Output_Single o_{outputPort.Id} (.clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire.Id}]), .out(out[{outputPort.Id}]));";
         }
 
         private static string GetLampMoudleString(Lamp lamp)
@@ -128,7 +91,7 @@ namespace Wirelog
 
             var inputWires = GetWireNames(lamp.InputWires);
 
-            return $"    {moduleName} l_{lamp.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
+            return $"    {moduleName} l_{lamp.Id} (.clk(clk), .reset(reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
         }
 
         private static string GetGateMoudleString(Gate gate)
