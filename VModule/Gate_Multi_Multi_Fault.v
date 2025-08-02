@@ -15,7 +15,7 @@ module Gate_Multi_Multi_Fault #(
 
     assign out = {OUTPUT_COUNT{result}};
 
-    Gate_Single_Multi_Fault #( .RAND_SEED(RAND_SEED) ) gl (
+    Gate_Single_Multi_Fault #( .INPUT_COUNT(INPUT_COUNT), .RAND_SEED(RAND_SEED) ) gl (
         .clk(clk),
         .reset(reset),
         .logic_reset(logic_reset),

@@ -12,7 +12,7 @@ module Gate_Multi_Multi_NAND #(
 
     assign out = {OUTPUT_COUNT{result}};
 
-    Gate_Multi_Single_NAND gl (
+    Gate_Multi_Single_NAND #( .INPUT_COUNT(INPUT_COUNT) ) gl (
         .clk(clk),
         .logic_reset(logic_reset),
         .in(in),
