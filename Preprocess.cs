@@ -221,10 +221,12 @@ namespace Wirelog
             {
                 if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
                 {
-                    foundOutput.OutputPort ??= new OutputPort();
-                    foundOutput.OutputPort.Output = foundOutput;
-                    foundOutput.OutputPort.InputWire = wire;
-                    wire.OutputPorts.Add(foundOutput.OutputPort);
+                    var outputPort = new OutputPort();
+                    foundOutput.OutputPorts.Clear();
+                    foundOutput.OutputPorts.Add(outputPort);
+                    outputPort.Output = foundOutput;
+                    outputPort.InputWire = wire;
+                    wire.OutputPorts.Add(outputPort);
                 }
             }
         }

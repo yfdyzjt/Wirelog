@@ -1,6 +1,7 @@
 ﻿using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
+using System.Collections.Generic;
 
 namespace Wirelog
 {
@@ -8,7 +9,7 @@ namespace Wirelog
     {
         public OutputType Type { get; set; }
         public Point16 Pos { get; set; }
-        public OutputPort OutputPort { get; set; }
+        public HashSet<OutputPort> OutputPorts { get; } = [];
         public static bool TryGetType(Tile tile, out OutputType type)
         {
             if (tile == null || !tile.HasTile) { type = OutputType.None; return false; }
