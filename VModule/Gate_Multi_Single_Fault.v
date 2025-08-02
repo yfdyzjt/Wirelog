@@ -1,5 +1,6 @@
 module Gate_Multi_Single_Fault #(
-    parameter INPUT_COUNT = 2  
+    parameter INPUT_COUNT = 2,
+    parameter RAND_SEED = 12'hAAA
 )(
     input wire clk,
     input wire reset,
@@ -19,12 +20,12 @@ module Gate_Multi_Single_Fault #(
         end
     end
     
-    reg [11:0] lfsr_reg = 12'hAAA;
+    reg [11:0] lfsr_reg = RAND_SEED;
     wire lfsr_feedback = lfsr_reg[11] ^ lfsr_reg[5] ^ lfsr_reg[3] ^ lfsr_reg[0];
     
     always @(posedge clk) begin
         if (reset)
-            lfsr_reg <= 12'hAAA;
+            lfsr_reg <= RAND_SEED;
         else
             lfsr_reg <= {lfsr_reg[10:0], lfsr_feedback};
     end

@@ -25,9 +25,7 @@ namespace Wirelog
                 );
                     wire [{_wires.Count - 1}:0] wires;
                     wire [{_lampsFound.Count - 1}:0] lamps;
-
                     assign wiring_running = |wires;
-
                     assign in_width = {_inputsPortFound.Count};
                     assign out_width = {_outputsPortFound.Count};
                 """);
@@ -91,14 +89,8 @@ namespace Wirelog
 
             var inputWires = GetWireNames(lamp.InputWires);
 
-            if (lamp.Type == LampType.Fault)
-            {
-                return $"    {moduleName} l_{lamp.Id} (.clk(clk), .in({inputWires}), .out(lamps[{lamp.Id}]));";
-            }
-            else
-            {
-                return $"    {moduleName} l_{lamp.Id} (.clk(clk), .reset(reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
-            }
+            if (lamp.Type == LampType.Fault) return $"    {moduleName} l_{lamp.Id} (.clk(clk), .in({inputWires}), .out(lamps[{lamp.Id}]));";
+            else return $"    {moduleName} l_{lamp.Id} (.clk(clk), .reset(reset), .in({inputWires}), .out(lamps[{lamp.Id}]));";
         }
 
         private static string GetGateMoudleString(Gate gate)
@@ -108,9 +100,11 @@ namespace Wirelog
                 var inputType = gate.InputLamps.Count - 1 == 1 ? "Single" : "Multi";
                 var outputType = gate.OutputWires.Count == 1 ? "Single" : "Multi";
 
+                var randSeed = Main.rand.Next() % (1 << 12);
                 var parameters = new List<string>();
-                if (inputType == "Multi") parameters.Add($".INPUT_COUNT({gate.InputLamps.Count})");
+                if (inputType == "Multi") parameters.Add($".INPUT_COUNT({gate.InputLamps.Count - 1})");
                 if (outputType == "Multi") parameters.Add($".OUTPUT_COUNT({gate.OutputWires.Count})");
+                if (inputType == "Multi") parameters.Add($".RAND_SEED({(randSeed == 0 ? 0xAAA : randSeed)})");
                 var parameterString = parameters.Count > 0 ? $" #({string.Join(", ", parameters)})" : "";
 
                 var moduleName = $"Gate_{inputType}_{outputType}_{gate.Type}{parameterString}";
@@ -119,7 +113,8 @@ namespace Wirelog
                 var inputFaultLamp = GetLampNames([gate.InputLamps.First(gate => gate.Type == LampType.Fault)]);
                 var outputWires = GetWireNames(gate.OutputWires);
 
-                return $"    {moduleName} g_{gate.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires}));";
+                if (inputType == "Multi") return $"    {moduleName} g_{gate.Id} (.clk(clk), .reset(reset), .logic_reset(logic_reset), .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires}));";
+                else return $"    {moduleName} g_{gate.Id} (.clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires}));";
             }
             else
             {

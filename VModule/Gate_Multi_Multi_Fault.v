@@ -1,6 +1,7 @@
 module Gate_Multi_Multi_Fault #(
     parameter INPUT_COUNT = 2,
-    parameter OUTPUT_COUNT = 2  
+    parameter OUTPUT_COUNT = 2,
+    parameter RAND_SEED = 12'hAAA
 )(
     input wire clk,
     input wire reset,
@@ -14,7 +15,7 @@ module Gate_Multi_Multi_Fault #(
 
     assign out = {OUTPUT_COUNT{result}};
 
-    Gate_Single_Multi_Fault gl (
+    Gate_Single_Multi_Fault #( .RAND_SEED(RAND_SEED) ) gl (
         .clk(clk),
         .reset(reset),
         .logic_reset(logic_reset),
