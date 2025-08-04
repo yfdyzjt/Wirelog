@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Terraria;
 using Terraria.DataStructures;
+using Wirelog;
 
 namespace Wirelog
 {
@@ -105,22 +106,32 @@ namespace Wirelog
         private static void PreprocessWires()
         {
             var visitedWires = new HashSet<(Point16, WireType)>();
-            for (int x = 0; x < Main.maxTilesX; x++)
+
+            int i = 0;
+            int sourceCount = _inputsFound.Count + _gatesFound.Count;
+            foreach (var posInput in _inputsFound)
             {
-                if (x % Math.Max(1, Main.maxTilesX / 100) == 0)
-                    Main.statusText = $"preprocess wires {x * 1f / Main.maxTilesX:P1}";
-                for (int y = 0; y < Main.maxTilesY; y++)
+                if (i % Math.Max(1, sourceCount / 100) == 0)
+                    Main.statusText = $"connect components {i++ * 1f / sourceCount:P1}";
+                TraceSource(posInput.Key, visitedWires);
+            }
+            foreach (var posGate in _gatesFound)
+            {
+                if (i % Math.Max(1, sourceCount / 100) == 0)
+                    Main.statusText = $"connect components {i++ * 1f / sourceCount:P1}";
+                TraceSource(posGate.Key, visitedWires);
+            }
+        }
+
+        private static void TraceSource(Point16 startPos, HashSet<(Point16, WireType)> visitedWires)
+        {
+            foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
+            {
+                if (Wire.HasWire(Main.tile[startPos], wireType) && !visitedWires.Contains((startPos, wireType)))
                 {
-                    foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
-                    {
-                        var curPos = new Point16(x, y);
-                        if (Wire.HasWire(Main.tile[curPos], wireType) && !visitedWires.Contains((curPos, wireType)))
-                        {
-                            var wire = new Wire() { Type = wireType };
-                            _wires.Add(wire);
-                            TraceWire(wire, curPos, curPos, wireType, 0, visitedWires);
-                        }
-                    }
+                    var wire = new Wire() { Type = wireType };
+                    TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
+                    _wires.Add(wire);
                 }
             }
         }
