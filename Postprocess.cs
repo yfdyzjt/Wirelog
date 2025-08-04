@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Terraria;
 
@@ -22,7 +23,7 @@ namespace Wirelog
 
         private static void CopyMultiInputWiresAndOutputPorts()
         {
-            var multiInputWires = _wires.Where(w => w.InputPorts.Count + w.Gates.Count >= 1).ToList();
+            var multiInputWires = _wires.Where(w => w.InputPorts.Count + w.Gates.Count > 1).ToList();
             foreach (var curWire in multiInputWires)
             {
                 var newWires = new List<Wire>();
