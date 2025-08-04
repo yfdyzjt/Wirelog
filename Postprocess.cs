@@ -8,10 +8,10 @@ namespace Wirelog
     {
         private static void Postprocess()
         {
-            Main.statusText = $"prune fault lamps";
-            PruneFaultLamps();
             Main.statusText = $"prune unused components";
             PruneUnusedComponents();
+            Main.statusText = $"prune fault lamps";
+            PruneFaultLamps();
             Main.statusText = $"merge input ports";
             MergeInputPorts();
             Main.statusText = $"copy multi input wires and output ports";
