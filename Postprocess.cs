@@ -13,6 +13,7 @@ namespace Wirelog
             PruneUnusedComponents();
             Main.statusText = $"prune fault lamps";
             PruneFaultLamps();
+            PruneUnusedComponents();
             Main.statusText = $"merge input ports";
             MergeInputPorts();
             Main.statusText = $"copy multi input wires and output ports";
