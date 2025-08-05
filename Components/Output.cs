@@ -1,12 +1,38 @@
-﻿using Terraria;
+using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
 using System.Collections.Generic;
+using System;
+using System.Reflection;
 
 namespace Wirelog
 {
     public class Output
     {
+        private static readonly Action<Output>[] _outputActivators = new Action<Output>[Enum.GetValues(typeof(OutputType)).Length];
+
+        static Output()
+        {
+            foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                if (type.Namespace == "Wirelog.Outputs")
+                {
+                    if (Enum.TryParse<OutputType>(type.Name, out var outputType))
+                    {
+                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Output)], null);
+                        if (activateMethod != null)
+                        {
+                            _outputActivators[(int)outputType] = (Action<Output>)Delegate.CreateDelegate(typeof(Action<Output>), activateMethod);
+                        }
+                    }
+                }
+            }
+        }
+        public void Activate()
+        {
+            _outputActivators[(int)Type]?.Invoke(this);
+        }
+
         public OutputType Type { get; set; }
         public Point16 Pos { get; set; }
         public HashSet<OutputPort> OutputPorts { get; } = [];

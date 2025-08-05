@@ -1,5 +1,6 @@
 ﻿using System;
 using Terraria;
+using Terraria.DataStructures;
 
 namespace Wirelog
 {
@@ -121,6 +122,15 @@ namespace Wirelog
 
         public static void HitSwitch(int i, int j)
         {
+            var hitPos = new Point16(i, j);
+            if (Converter.InputsFound.TryGetValue(hitPos, out var input))
+            {
+                input.Activate();
+            }
+            else
+            {
+                Main.NewText($"No find input at {hitPos}");
+            }
         }
     }
 }

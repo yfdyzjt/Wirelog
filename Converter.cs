@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Terraria.DataStructures;
 
@@ -15,6 +14,8 @@ namespace Wirelog
         private static readonly Dictionary<int, OutputPort> _outputsPortFound = [];
 
         private static readonly List<Wire> _wires = [];
+
+        public static Dictionary<Point16, Input> InputsFound => _inputsFound;
 
         public static void Convert()
         {

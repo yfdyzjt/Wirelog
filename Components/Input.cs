@@ -1,11 +1,37 @@
-﻿using Terraria;
+using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
+using System;
+using System.Reflection;
 
 namespace Wirelog
 {
     public class Input
     {
+        private static readonly Action<Input>[] _inputActivators = new Action<Input>[Enum.GetValues(typeof(InputType)).Length];
+
+        static Input()
+        {
+            foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                if (type.Namespace == "Wirelog.Inputs")
+                {
+                    if (Enum.TryParse<InputType>(type.Name, out var inputType))
+                    {
+                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Input)], null);
+                        if (activateMethod != null)
+                        {
+                            _inputActivators[(int)inputType] = (Action<Input>)Delegate.CreateDelegate(typeof(Action<Input>), activateMethod);
+                        }
+                    }
+                }
+            }
+        }
+        public void Activate()
+        {
+            _inputActivators[(int)Type]?.Invoke(this);
+        }
+
         public int Id { get; set; }
         public InputType Type { get; set; }
         public Point16 Pos { get; set; }

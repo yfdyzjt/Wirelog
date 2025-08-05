@@ -15,7 +15,7 @@ namespace Wirelog
             WorldFile.OnWorldLoad += Converter.Convert;
             // Terraria.On_Wiring.Initialize += Wiring_Initialize;
             // Terraria.On_Wiring.UpdateMech += Wiring_UpdateMech;
-            // Terraria.On_Wiring.HitSwitch += Wiring_HitSwitch;
+            Terraria.On_Wiring.HitSwitch += Wiring_HitSwitch;
         }
 
         private void Wiring_Initialize(Terraria.On_Wiring.orig_Initialize orig)
@@ -38,7 +38,7 @@ namespace Wirelog
             WorldFile.OnWorldLoad -= Converter.Convert;
             // Terraria.On_Wiring.Initialize -= Wiring_Initialize;
             // Terraria.On_Wiring.UpdateMech -= Wiring_UpdateMech;
-            // Terraria.On_Wiring.HitSwitch -= Wiring_HitSwitch;
+            Terraria.On_Wiring.HitSwitch -= Wiring_HitSwitch;
         }
     }
 }
