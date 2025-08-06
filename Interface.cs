@@ -1,4 +1,4 @@
-﻿using Terraria;
+using Terraria;
 using Terraria.DataStructures;
 
 namespace Wirelog
@@ -7,10 +7,18 @@ namespace Wirelog
     {
         public static void InputActivate(Point16 pos)
         {
-            if(TryGetInput(pos,out var input))
+            if (TryGetInput(pos, out var input))
             {
                 int inputPortId = input.InputPort.Id;
-                Main.NewText($"{inputPortId}");
+                var outputIds = VerilogSimulator.SendInputAndWaitForOutput(inputPortId);
+
+                foreach (var outputId in outputIds)
+                {
+                    if (TryGetOutput(outputId, out var output))
+                    {
+                        Output.Activate(output.Type, output.Pos);
+                    }
+                }
             }
         }
 
@@ -33,6 +41,17 @@ namespace Wirelog
                 }
             }
             inputResult = null;
+            return false;
+        }
+
+        private static bool TryGetOutput(int outputId, out Output outputResult)
+        {
+            if (Converter.OutputsPortFound.TryGetValue(outputId, out var outputPort))
+            {
+                outputResult = outputPort.Output;
+                return true;
+            }
+            outputResult = null;
             return false;
         }
     }

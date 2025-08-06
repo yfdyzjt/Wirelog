@@ -17,6 +17,7 @@ namespace Wirelog
         private static readonly List<Wire> _wires = [];
 
         public static Dictionary<Point16, Input> InputsFound => _inputsFound;
+        public static Dictionary<int, OutputPort> OutputsPortFound => _outputsPortFound;
 
         public static void Convert()
         {

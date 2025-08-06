@@ -1,3 +1,4 @@
+using System;
 using Terraria;
 using Terraria.IO;
 using Terraria.ModLoader;
@@ -9,10 +10,18 @@ namespace Wirelog
         public override void Load()
         {
             WorldFile.OnWorldLoad += Converter.Convert;
+            WorldFile.OnWorldLoad += VerilogSimulator.Start;
+            On_WorldGen.SaveAndQuit += WorldGen_SaveAndQuit;
             On_Wiring.Initialize += Wiring_Initialize;
             On_Wiring.UpdateMech += Wiring_UpdateMech;
             On_Wiring.CheckMech += Wiring_CheckMech;
             On_Wiring.HitSwitch += Wiring_HitSwitch;
+        }
+
+        private void WorldGen_SaveAndQuit(On_WorldGen.orig_SaveAndQuit orig, Action callback)
+        {
+            VerilogSimulator.Stop();
+            orig(callback);
         }
 
         private void Wiring_Initialize(On_Wiring.orig_Initialize orig)
@@ -38,6 +47,8 @@ namespace Wirelog
         public override void Unload()
         {
             WorldFile.OnWorldLoad -= Converter.Convert;
+            WorldFile.OnWorldLoad -= VerilogSimulator.Start;
+            On_WorldGen.SaveAndQuit -= WorldGen_SaveAndQuit;
             On_Wiring.Initialize -= Wiring_Initialize;
             On_Wiring.UpdateMech -= Wiring_UpdateMech;
             On_Wiring.CheckMech -= Wiring_CheckMech;

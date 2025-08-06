@@ -26,7 +26,7 @@
 #define SHUTDOWN_EVENT_NAME "TerrariaWiringSim_ShutdownEvent"
 
 #define IPC_INPUT_BUFFER_SIZE 8192
-#define IPC_OUTPUT_BUFFER_SIZE 65536
+#define IPC_MAX_OUTPUT_IDS_PER_SET 65536
 #define IPC_MAX_OUTPUT_SETS 1024
 
 static VWiring *top;
@@ -38,9 +38,15 @@ static std::condition_variable cv_output;
 static bool stop_thread = false;
 
 static std::queue<int> input_queue;
-static std::queue<std::vector<int>> output_queue;
+static std::queue<std::vector<int32_t>> output_queue;
 
 #pragma pack(push, 1)
+struct OutputSet
+{
+    int32_t count;
+    int32_t ids[IPC_MAX_OUTPUT_IDS_PER_SET];
+};
+
 struct SharedMemoryLayout
 {
     std::atomic<bool> sim_ready;
@@ -52,8 +58,7 @@ struct SharedMemoryLayout
 
     std::atomic<uint64_t> output_write_idx;
     std::atomic<uint64_t> output_read_idx;
-    int32_t output_buffer[IPC_OUTPUT_BUFFER_SIZE];
-    int32_t output_lengths[IPC_MAX_OUTPUT_SETS];
+    OutputSet output_sets[IPC_MAX_OUTPUT_SETS];
 };
 #pragma pack(pop)
 
@@ -207,7 +212,7 @@ void simulation_loop()
             std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles." << std::endl;
         }
 
-        std::vector<int> output_idx;
+        std::vector<int32_t> output_idx;
         for (int i = 0; i < top->out_width; ++i)
         {
             if (get_output_bit(top->out, i))
@@ -393,7 +398,7 @@ void console_output_thread()
 {
     while (!stop_thread)
     {
-        std::vector<int> output_idx;
+        std::vector<int32_t> output_idx;
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv_output.wait(lock, []
@@ -456,11 +461,9 @@ void ipc_input_thread()
 
 void ipc_output_thread()
 {
-    uint64_t current_output_buffer_offset = 0;
-
     while (!stop_thread)
     {
-        std::vector<int> output_data;
+        std::vector<int32_t> output_data;
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv_output.wait(lock, [&]
@@ -476,25 +479,29 @@ void ipc_output_thread()
 
         while (((write_idx + 1) & (IPC_MAX_OUTPUT_SETS - 1)) == (read_idx & (IPC_MAX_OUTPUT_SETS - 1)))
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
             if (stop_thread)
                 return;
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
             read_idx = pSharedMem->output_read_idx.load(std::memory_order_acquire);
         }
 
-        if (current_output_buffer_offset + output_data.size() > IPC_OUTPUT_BUFFER_SIZE)
-        {
-            current_output_buffer_offset = 0;
-        }
+        uint64_t current_write_idx = write_idx & (IPC_MAX_OUTPUT_SETS - 1);
+        OutputSet &target_set = pSharedMem->output_sets[current_write_idx];
 
         int32_t data_len = static_cast<int32_t>(output_data.size());
-        pSharedMem->output_lengths[write_idx & (IPC_MAX_OUTPUT_SETS - 1)] = data_len;
+        if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
+        {
+            std::cerr << "[IPC] ERROR: Output data size (" << data_len
+                      << ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
+                      << "). Truncating output." << std::endl;
+            data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
+        }
 
+        target_set.count = data_len;
         if (data_len > 0)
         {
-            memcpy(&pSharedMem->output_buffer[current_output_buffer_offset], output_data.data(), data_len * sizeof(int32_t));
+            memcpy(target_set.ids, output_data.data(), data_len * sizeof(int32_t));
         }
-        current_output_buffer_offset += data_len;
 
         pSharedMem->output_write_idx.store(write_idx + 1, std::memory_order_release);
 

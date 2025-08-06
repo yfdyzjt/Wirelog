@@ -23,13 +23,12 @@ namespace Wirelog
                     output wire [31:0] in_width,
                     output wire [31:0] out_width
                 );
-                    wire [{_wires.Count - 1}:0] wires;
-                    wire [{_lampsFound.Count - 1}:0] lamps;
                     assign wiring_running = |wires;
                     assign in_width = {_inputsPortFound.Count};
                     assign out_width = {_outputsPortFound.Count};
                 """);
-
+            if (_wires.Count > 0) sb.Append($"    wire [{_wires.Count - 1}:0] wires;");
+            if (_lampsFound.Count > 0) sb.Append($"    wire [{_lampsFound.Count - 1}:0] lamps;");
             sb.AppendLine("    // input port module");
             foreach (var inputPort in _inputsPortFound.Values)
             {

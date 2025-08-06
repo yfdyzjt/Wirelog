@@ -9,7 +9,7 @@ namespace Wirelog
 {
     public class Output
     {
-        private static readonly Action<Output>[] _outputActivators = new Action<Output>[Enum.GetValues(typeof(OutputType)).Length];
+        private static readonly Action<Point16>[] _outputActivators = new Action<Point16>[Enum.GetValues(typeof(OutputType)).Length];
 
         static Output()
         {
@@ -19,18 +19,18 @@ namespace Wirelog
                 {
                     if (Enum.TryParse<OutputType>(type.Name, out var outputType))
                     {
-                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Output)], null);
+                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Point16)], null);
                         if (activateMethod != null)
                         {
-                            _outputActivators[(int)outputType] = (Action<Output>)Delegate.CreateDelegate(typeof(Action<Output>), activateMethod);
+                            _outputActivators[(int)outputType] = (Action<Point16>)Delegate.CreateDelegate(typeof(Action<Point16>), activateMethod);
                         }
                     }
                 }
             }
         }
-        public void Activate()
+        public static void Activate(OutputType type, Point16 pos)
         {
-            _outputActivators[(int)Type]?.Invoke(this);
+            _outputActivators[(int)type]?.Invoke(pos);
         }
 
         public OutputType Type { get; set; }
