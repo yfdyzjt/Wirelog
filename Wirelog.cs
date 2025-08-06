@@ -1,34 +1,36 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Terraria;
 using Terraria.IO;
 using Terraria.ModLoader;
 
 namespace Wirelog
 {
-	public class Wirelog : Mod
+    public class Wirelog : Mod
     {
         public override void Load()
         {
             WorldFile.OnWorldLoad += Converter.Convert;
-            // Terraria.On_Wiring.Initialize += Wiring_Initialize;
-            // Terraria.On_Wiring.UpdateMech += Wiring_UpdateMech;
-            Terraria.On_Wiring.HitSwitch += Wiring_HitSwitch;
+            On_Wiring.Initialize += Wiring_Initialize;
+            On_Wiring.UpdateMech += Wiring_UpdateMech;
+            On_Wiring.CheckMech += Wiring_CheckMech;
+            On_Wiring.HitSwitch += Wiring_HitSwitch;
         }
 
-        private void Wiring_Initialize(Terraria.On_Wiring.orig_Initialize orig)
+        private void Wiring_Initialize(On_Wiring.orig_Initialize orig)
         {
             WiringWrapper.Initialize();
         }
 
-        private void Wiring_UpdateMech(Terraria.On_Wiring.orig_UpdateMech orig)
+        private void Wiring_UpdateMech(On_Wiring.orig_UpdateMech orig)
         {
             WiringWrapper.UpdateMech();
         }
 
-        private void Wiring_HitSwitch(Terraria.On_Wiring.orig_HitSwitch orig, int i, int j)
+        private bool Wiring_CheckMech(On_Wiring.orig_CheckMech orig, int i, int j, int time)
+        {
+            return WiringWrapper.CheckMech(i, j, time);
+        }
+
+        private void Wiring_HitSwitch(On_Wiring.orig_HitSwitch orig, int i, int j)
         {
             WiringWrapper.HitSwitch(i, j);
         }
@@ -36,9 +38,10 @@ namespace Wirelog
         public override void Unload()
         {
             WorldFile.OnWorldLoad -= Converter.Convert;
-            // Terraria.On_Wiring.Initialize -= Wiring_Initialize;
-            // Terraria.On_Wiring.UpdateMech -= Wiring_UpdateMech;
-            Terraria.On_Wiring.HitSwitch -= Wiring_HitSwitch;
+            On_Wiring.Initialize -= Wiring_Initialize;
+            On_Wiring.UpdateMech -= Wiring_UpdateMech;
+            On_Wiring.CheckMech -= Wiring_CheckMech;
+            On_Wiring.HitSwitch -= Wiring_HitSwitch;
         }
     }
 }

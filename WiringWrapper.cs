@@ -1,6 +1,7 @@
 ﻿using System;
 using Terraria;
 using Terraria.DataStructures;
+using Terraria.ID;
 
 namespace Wirelog
 {
@@ -73,7 +74,10 @@ namespace Wirelog
                             if (Math.IEEERemainder(_mechTime[i], num) == 0.0)
                             {
                                 _mechTime[i] = 18000;
-                                // BigTripWire(mechX, mechY, 1, 1);
+                                if (Converter.TryFoundInput(new Point16(mechX, mechY), out var input))
+                                {
+                                    Interface.InputActivate(input);
+                                }
                             }
                         }
                     }
@@ -82,7 +86,7 @@ namespace Wirelog
                         if (Main.tile[mechX, mechY].HasTile && Main.tile[mechX, mechY].TileType == 144)
                         {
                             Main.tile[mechX, mechY].TileFrameY = 0;
-                            // NetMessage.SendTileSquare(-1, mechX, mechY, TileChangeType.None);
+                            NetMessage.SendTileSquare(-1, mechX, mechY, TileChangeType.None);
                         }
                         if (Main.tile[mechX, mechY].HasTile && Main.tile[mechX, mechY].TileType == 411)
                         {
@@ -106,7 +110,7 @@ namespace Wirelog
                                     }
                                 }
                             }
-                            // NetMessage.SendTileSquare(-1, num4, num5, 2, 2, TileChangeType.None);
+                            NetMessage.SendTileSquare(-1, num4, num5, 2, 2, TileChangeType.None);
                         }
                         for (var l = i; l < _numMechs; l++)
                         {
@@ -120,10 +124,30 @@ namespace Wirelog
             }
         }
 
-        public static void HitSwitch(int i, int j)
+        public static bool CheckMech(int i, int j, int time)
         {
-            var hitPos = new Point16(i, j);
-            if (Converter.InputsFound.TryGetValue(hitPos, out var input))
+            for (int k = 0; k < _numMechs; k++)
+            {
+                if (_mechX[k] == i && _mechY[k] == j)
+                {
+                    return false;
+                }
+            }
+            if (_numMechs < 999)
+            {
+                _mechX[_numMechs] = i;
+                _mechY[_numMechs] = j;
+                _mechTime[_numMechs] = time;
+                _numMechs++;
+                return true;
+            }
+            return false;
+        }
+
+        public static void HitSwitch(int x, int y)
+        {
+            var hitPos = new Point16(x, y);
+            if (Converter.TryFoundInput(hitPos, out var input))
             {
                 input.Activate();
             }

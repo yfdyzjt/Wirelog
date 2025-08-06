@@ -27,9 +27,9 @@ namespace Wirelog
                 }
             }
         }
-        public void Activate()
+        public static void Activate(InputType type, Point16 pos)
         {
-            _inputActivators[(int)Type]?.Invoke(this);
+            _inputActivators[(int)type]?.Invoke(pos);
         }
 
         public int Id { get; set; }

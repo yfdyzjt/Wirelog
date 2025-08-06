@@ -2,8 +2,6 @@ namespace Wirelog.Inputs
 {
     public static class WeightedPressurePlate
     {
-        public static void Activate(Input input)
-        {
-        }
+        public static void Activate(Input input) => PressurePlates.Activate(input);
     }
 }

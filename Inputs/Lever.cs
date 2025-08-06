@@ -4,6 +4,7 @@ namespace Wirelog.Inputs
     {
         public static void Activate(Input input)
         {
+
         }
     }
 }
