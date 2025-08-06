@@ -1,7 +1,9 @@
+using Terraria.DataStructures;
+
 namespace Wirelog.Inputs
 {
     public static class PressurePlateTrack
     {
-        public static void Activate(Input input) => PressurePlates.Activate(input);
+        public static void Activate(Point16 pos) => PressurePlates.Activate(pos);
     }
 }

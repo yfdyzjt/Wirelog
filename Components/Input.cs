@@ -8,7 +8,7 @@ namespace Wirelog
 {
     public class Input
     {
-        private static readonly Action<Input>[] _inputActivators = new Action<Input>[Enum.GetValues(typeof(InputType)).Length];
+        private static readonly Action<Point16>[] _inputActivators = new Action<Point16>[Enum.GetValues(typeof(InputType)).Length];
 
         static Input()
         {
@@ -18,10 +18,10 @@ namespace Wirelog
                 {
                     if (Enum.TryParse<InputType>(type.Name, out var inputType))
                     {
-                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Input)], null);
+                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Point16)], null);
                         if (activateMethod != null)
                         {
-                            _inputActivators[(int)inputType] = (Action<Input>)Delegate.CreateDelegate(typeof(Action<Input>), activateMethod);
+                            _inputActivators[(int)inputType] = (Action<Point16>)Delegate.CreateDelegate(typeof(Action<Point16>), activateMethod);
                         }
                     }
                 }
@@ -49,6 +49,7 @@ namespace Wirelog
                 TileID.GolfHole => InputType.GolfHole,
                 TileID.GemLocks => InputType.GemLocks,
                 TileID.Switches => InputType.Switches,
+                TileID.GeyserTrap => InputType.GeyserTrap,
                 TileID.Timers => InputType.Timers,
                 TileID.FakeContainers or TileID.FakeContainers2 => InputType.FakeContainers,
                 TileID.Containers2 when tile.TileFrameX / 36 is 4 => InputType.DeadMansChest,
@@ -65,6 +66,7 @@ namespace Wirelog
             InputType.Detonator or
             InputType.DeadMansChest or
             InputType.FakeContainers => (2, 2),
+            InputType.GeyserTrap => (2, 1),
             _ => (1, 1),
         };
 
@@ -80,6 +82,7 @@ namespace Wirelog
         GolfHole,
         GemLocks,
         Switches,
+        GeyserTrap,
         Timers,
         FakeContainers,
         DeadMansChest,

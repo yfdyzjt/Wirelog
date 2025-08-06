@@ -74,10 +74,7 @@ namespace Wirelog
                             if (Math.IEEERemainder(_mechTime[i], num) == 0.0)
                             {
                                 _mechTime[i] = 18000;
-                                if (Converter.TryFoundInput(new Point16(mechX, mechY), out var input))
-                                {
-                                    Interface.InputActivate(input);
-                                }
+                                Interface.InputActivate(new Point16(mechX, mechY));
                             }
                         }
                     }
@@ -147,13 +144,13 @@ namespace Wirelog
         public static void HitSwitch(int x, int y)
         {
             var hitPos = new Point16(x, y);
-            if (Converter.TryFoundInput(hitPos, out var input))
+            if (Input.TryGetType(Main.tile[hitPos], out var type))
             {
-                input.Activate();
+                Input.Activate(type, hitPos);
             }
             else
             {
-                Main.NewText($"No find input at {hitPos}");
+                Main.NewText($"Not input at {hitPos}");
             }
         }
     }

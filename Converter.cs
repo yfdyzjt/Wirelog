@@ -16,6 +16,8 @@ namespace Wirelog
 
         private static readonly List<Wire> _wires = [];
 
+        public static Dictionary<Point16, Input> InputsFound => _inputsFound;
+
         public static void Convert()
         {
             LoadVModules();
@@ -23,28 +25,6 @@ namespace Wirelog
             Preprocess();
             Postprocess();
             VerilogConvert();
-        }
-
-        public static bool TryFoundInput(Point16 pos, out Input foundInput)
-        {
-            if (Input.TryGetType(Main.tile[pos], out var inputType))
-            {
-                var (sizeX, sizeY) = Input.GetSize(inputType);
-                for (int dX = 0; dX < sizeX; dX++)
-                {
-                    for (int dY = 0; dY < sizeY; dY++)
-                    {
-                        var curPos = new Point16(pos.X + dX, pos.Y + dY);
-                        if (_inputsFound.TryGetValue(curPos, out var input))
-                        {
-                            foundInput = input;
-                            return true;
-                        }
-                    }
-                }
-            }
-            foundInput = null;
-            return false;
         }
 
         private static void AllClear()

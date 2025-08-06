@@ -1,23 +1,24 @@
 using Terraria;
+using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Inputs
 {
     public static class Timers
     {
-        public static void Activate(Input input)
+        public static void Activate(Point16 pos)
         {
-            if (Main.tile[input.Pos].TileFrameY == 0)
+            if (Main.tile[pos].TileFrameY == 0)
             {
-                Main.tile[input.Pos].TileFrameY = 18;
+                Main.tile[pos].TileFrameY = 18;
                 if (Main.netMode != NetmodeID.MultiplayerClient)
                 {
-                    WiringWrapper.CheckMech(input.Pos.X, input.Pos.Y, 18000);
+                    WiringWrapper.CheckMech(pos.X, pos.Y, 18000);
                 }
             }
             else
             {
-                Main.tile[input.Pos].TileFrameY = 0;
+                Main.tile[pos].TileFrameY = 0;
             }
             // SoundEngine.PlaySound(28, i * 16, j * 16, 0, 1f, 0f);
         }
