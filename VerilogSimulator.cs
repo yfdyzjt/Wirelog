@@ -22,12 +22,12 @@ namespace Wirelog
         private const int IpcMaxOutputSets = 1024;
 
         private const int SimReadyOffset = 0;
-        private const int InputWriteIdxOffset = SimReadyOffset + 4;
-        private const int InputReadIdxOffset = InputWriteIdxOffset + 8;
-        private const int InputBufferOffset = InputReadIdxOffset + 8;
+        private const int InputWriteIdxOffset = SimReadyOffset + sizeof(int);
+        private const int InputReadIdxOffset = InputWriteIdxOffset + sizeof(long);
+        private const int InputBufferOffset = InputReadIdxOffset + sizeof(long);
         private const int OutputWriteIdxOffset = InputBufferOffset + IpcInputBufferSize * sizeof(int);
-        private const int OutputReadIdxOffset = OutputWriteIdxOffset + 8;
-        private const int OutputSetsOffset = OutputReadIdxOffset + 8;
+        private const int OutputReadIdxOffset = OutputWriteIdxOffset + sizeof(long);
+        private const int OutputSetsOffset = OutputReadIdxOffset + sizeof(long);
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct OutputSet
@@ -82,17 +82,13 @@ namespace Wirelog
         private static EventWaitHandle _outputEvent;
         private static EventWaitHandle _shutdownEvent;
 
-        private static long _outputReadIdx = 0;
-
         public static bool IsRunning => _simProcess != null && !_simProcess.HasExited;
-
-
 
         public static void Start()
         {
             if (IsRunning) return;
 
-            Main.statusText = "Waiting for verilog simulator to connect";
+            Main.statusText = "Waiting for verilog simulator to connect.";
             var simPath = Path.Combine(ModLoader.ModPath, "VWiring.exe");
             while (!File.Exists(simPath))
             {
@@ -101,6 +97,7 @@ namespace Wirelog
 
             try
             {
+                Main.statusText = "Simulator process start.";
                 _shutdownEvent = new EventWaitHandle(false, EventResetMode.ManualReset, ShutdownEventName);
 
                 var psi = new ProcessStartInfo
@@ -123,6 +120,7 @@ namespace Wirelog
 
                 Thread.Sleep(1000);
 
+                Main.statusText = "Connect to shared memory.";
                 int retryCount = 0;
                 bool connected = false;
                 while (retryCount < 10 && !connected)
@@ -178,7 +176,7 @@ namespace Wirelog
                 {
                     throw new TimeoutException("Failed to connect to event handles after multiple attempts.");
                 }
-                _outputReadIdx = 0;
+
 
                 Main.NewText("Verilog simulator connected.");
             }
@@ -192,7 +190,6 @@ namespace Wirelog
 
         public static void Stop()
         {
-
             try
             {
                 _shutdownEvent?.Set();
@@ -234,7 +231,6 @@ namespace Wirelog
                 Main.NewText($"Error during cleanup: {ex.Message}");
             }
 
-            _outputReadIdx = 0;
             Main.NewText("Verilog simulator disconnected.");
         }
 
@@ -256,7 +252,7 @@ namespace Wirelog
             {
                 long writeIdx = _accessor.ReadInt64(InputWriteIdxOffset);
 
-                _accessor.Write(InputBufferOffset + (writeIdx % IpcInputBufferSize) * sizeof(int), inputPortId);
+                _accessor.Write(InputBufferOffset + writeIdx % IpcInputBufferSize * sizeof(int), inputPortId);
                 _accessor.Write(InputWriteIdxOffset, writeIdx + 1);
 
                 _inputEvent.Set();
@@ -268,40 +264,34 @@ namespace Wirelog
                     return [];
                 }
 
-                long currentOutputWriteIdx = _accessor.ReadInt64(OutputWriteIdxOffset);
-                if (_outputReadIdx >= currentOutputWriteIdx)
+                long outputReadIdx = _accessor.ReadInt64(OutputReadIdxOffset);
+                long outputWriteIdx = _accessor.ReadInt64(OutputWriteIdxOffset);
+
+                if (outputReadIdx >= outputWriteIdx)
                 {
                     Main.NewText("No new output data available.");
                     return [];
                 }
 
-                long currentReadIdxInRing = _outputReadIdx % IpcMaxOutputSets;
-                long offset = OutputSetsOffset + currentReadIdxInRing * Marshal.SizeOf<OutputSet>();
+                long offset = OutputSetsOffset + outputReadIdx % IpcMaxOutputSets * (sizeof(int) + IpcMaxOutputIdsPerSet * sizeof(int));
 
-                _accessor.Read(offset, out OutputSet resultSet);
-
+                int count = _accessor.ReadInt32(offset);
                 var outputIds = new List<int>();
-                if (resultSet.Count > 0)
+                if (count > 0)
                 {
-                    if (resultSet.Ids != null)
-                    {
-                        outputIds.AddRange(resultSet.Ids.AsSpan(0, resultSet.Count).ToArray());
-                        Main.NewText($"Received {resultSet.Count} outputs from simulator.");
-                    }
-                    else
-                    {
-                        Main.NewText("Warning: Output IDs array is null.");
-                    }
+                    var buffer = new int[count];
+                    _accessor.ReadArray(offset + sizeof(int), buffer, 0, count);
+                    outputIds.AddRange(buffer);
                 }
 
-                _outputReadIdx++;
-                _accessor.Write(OutputReadIdxOffset, _outputReadIdx);
+                _accessor.Write(OutputReadIdxOffset, outputReadIdx + 1);
 
                 return outputIds;
             }
             catch (Exception ex)
             {
                 Main.NewText($"Error in SendInputAndWaitForOutput: {ex.Message}");
+                Stop();
                 return [];
             }
         }
