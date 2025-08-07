@@ -1,14 +1,11 @@
 #include <iostream>
-#include <queue>
-#include <mutex>
-#include <thread>
-#include <cstring>
-#include <string>
 #include <vector>
+#include <string>
 #include <atomic>
 #include <stdexcept>
 #include <type_traits>
-#include <condition_variable>
+#include <thread>
+#include <chrono>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -25,39 +22,21 @@
 #define OUTPUT_EVENT_NAME "TerrariaWiringSim_OutputEvent"
 #define SHUTDOWN_EVENT_NAME "TerrariaWiringSim_ShutdownEvent"
 
-#define IPC_INPUT_BUFFER_SIZE 8192
 #define IPC_MAX_OUTPUT_IDS_PER_SET 65536
-#define IPC_MAX_OUTPUT_SETS 1024
 
 static VWiring* top;
 
-static std::thread sim_thread;
-static std::mutex mtx;
-static std::condition_variable cv_input;
-static std::condition_variable cv_output;
-static bool stop_thread = false;
-
-static std::queue<int> input_queue;
-static std::queue<std::vector<int32_t>> output_queue;
-
 #pragma pack(push, 1)
-struct OutputSet
-{
-	int32_t count;
-	int32_t ids[IPC_MAX_OUTPUT_IDS_PER_SET];
-};
-
 struct SharedMemoryLayout
 {
-	std::atomic<bool> sim_ready;
+	std::atomic<int32_t> sim_ready;
+	std::atomic<int32_t> input_ready;
+	std::atomic<int32_t> output_ready;
+	std::atomic<int32_t> shutdown;
 
-	std::atomic<uint64_t> input_write_idx;
-	std::atomic<uint64_t> input_read_idx;
-	int32_t input_buffer[IPC_INPUT_BUFFER_SIZE];
-
-	std::atomic<uint64_t> output_write_idx;
-	std::atomic<uint64_t> output_read_idx;
-	OutputSet output_sets[IPC_MAX_OUTPUT_SETS];
+	int32_t input_id;
+	int32_t output_count;
+	int32_t output_ids[IPC_MAX_OUTPUT_IDS_PER_SET];
 };
 #pragma pack(pop)
 
@@ -132,7 +111,7 @@ void toggle_eval()
 	top->eval();
 }
 
-void simulation_loop()
+void initial_reset()
 {
 	std::cout << "[SIM] Performing initial reset..." << std::endl;
 	top->reset = 1;
@@ -145,194 +124,73 @@ void simulation_loop()
 
 	clear_input(top->in);
 	toggle_eval();
-
 	std::cout << "[SIM] Initial reset complete." << std::endl;
+}
 
-	while (true)
+std::vector<int32_t> run_simulation_cycle(int input_idx)
+{
+	if (input_idx < 0)
 	{
-		int input_idx;
-		{
-			std::unique_lock<std::mutex> lock(mtx);
-			cv_input.wait(lock, []
-				{ return !input_queue.empty() || stop_thread; });
-
-			if (stop_thread)
-			{
-				std::cout << "[SIM] Shutdown signal received. Exiting simulation loop." << std::endl;
-				break;
-			}
-
-			input_idx = input_queue.front();
-			input_queue.pop();
-		}
-
-		if (input_idx < 0)
-		{
-			std::cout << "[SIM] Received external reset command." << std::endl;
-			top->reset = 1;
-			for (int i = 0; i < 5; ++i)
-				toggle_clock();
-			top->reset = 0;
-			toggle_eval();
-			continue;
-		}
-
-		std::cout << "[SIM] Processing new input: " << input_idx << std::endl;
-
-		top->logic_reset = 1;
-		toggle_clock();
-		top->logic_reset = 0;
-		toggle_eval();
-
-		if (input_idx >= 0 && input_idx < top->in_width)
-		{
-			set_input_bit(top->in, input_idx);
-		}
-		toggle_clock();
-
-		clear_input(top->in);
-		toggle_eval();
-
-		std::cout << "[SIM] Input pulse sent. Running wiring..." << std::endl;
-
-		int cycle_count = 0;
-		do
-		{
+		std::cout << "[SIM] Received external reset command." << std::endl;
+		top->reset = 1;
+		for (int i = 0; i < 5; ++i)
 			toggle_clock();
-			cycle_count++;
-		} while (top->wiring_running != 0 && cycle_count < MAX_CYCLE_COUNT);
-
-		if (cycle_count >= MAX_CYCLE_COUNT)
-		{
-			std::cerr << "[SIM] WARNING: Simulation timed out! Wiring may be unstable." << std::endl;
-		}
-		else
-		{
-			std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles." << std::endl;
-		}
-
-		std::vector<int32_t> output_idx;
-		for (int i = 0; i < top->out_width; ++i)
-		{
-			if (get_output_bit(top->out, i))
-			{
-				output_idx.push_back(i);
-			}
-		}
-
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			output_queue.push(output_idx);
-		}
-		cv_output.notify_one();
+		top->reset = 0;
+		toggle_eval();
+		return {};
 	}
-}
 
-#if defined(_WIN32)
-#define API_EXPORT __declspec(dllexport)
-#else
-#define API_EXPORT __attribute__((visibility("default")))
-#endif
+	std::cout << "[SIM] Processing new input: " << input_idx << std::endl;
 
-/*
-extern "C"
-{
+	top->logic_reset = 1;
+	toggle_clock();
+	top->logic_reset = 0;
+	toggle_eval();
 
-	API_EXPORT void sim_init()
+	if (input_idx >= 0 && input_idx < top->in_width)
 	{
-		Verilated::commandArgs(0, (const char **)nullptr);
-		top = new VWiring;
-		stop_thread = false;
-		sim_thread = std::thread(simulation_loop);
-		std::cout << "[API] Simulation initialized." << std::endl;
+		set_input_bit(top->in, input_idx);
+	}
+	toggle_clock();
+
+	clear_input(top->in);
+	toggle_eval();
+
+	std::cout << "[SIM] Input pulse sent. Running wiring..." << std::endl;
+
+	int cycle_count = 0;
+	do
+	{
+		toggle_clock();
+		cycle_count++;
+	} while (top->wiring_running != 0 && cycle_count < MAX_CYCLE_COUNT);
+
+	if (cycle_count >= MAX_CYCLE_COUNT)
+	{
+		std::cerr << "[SIM] WARNING: Simulation timed out! Wiring may be unstable." << std::endl;
+	}
+	else
+	{
+		std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles." << std::endl;
 	}
 
-	API_EXPORT void sim_shutdown()
+	std::vector<int32_t> output_idx;
+	for (int i = 0; i < top->out_width; ++i)
 	{
-		if (stop_thread)
-			return;
+		if (get_output_bit(top->out, i))
 		{
-			std::lock_guard<std::mutex> lock(mtx);
-			stop_thread = true;
+			output_idx.push_back(i);
 		}
-		cv_input.notify_one();
-		if (sim_thread.joinable())
-			sim_thread.join();
-		delete top;
-		top = nullptr;
-		std::cout << "[API] Simulation shut down." << std::endl;
 	}
-
-	API_EXPORT void sim_send_input(int input_idx)
-	{
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			input_queue.push(input_idx);
-		}
-		cv_input.notify_one();
-	}
-
-	API_EXPORT void sim_send_reset()
-	{
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			input_queue.push(-1);
-		}
-		cv_input.notify_one();
-	}
-
-	API_EXPORT bool sim_is_output_available()
-	{
-		std::lock_guard<std::mutex> lock(mtx);
-		return !output_queue.empty();
-	}
-
-	API_EXPORT int sim_get_output_count()
-	{
-		std::lock_guard<std::mutex> lock(mtx);
-		if (output_queue.empty())
-		{
-			return -1;
-		}
-		return output_queue.front().size();
-	}
-
-	API_EXPORT void sim_get_outputs(int *buffer, int buffer_size)
-	{
-		std::lock_guard<std::mutex> lock(mtx);
-		if (output_queue.empty())
-		{
-			return;
-		}
-
-		const auto &front_vec = output_queue.front();
-		int items_to_copy = std::min((int)front_vec.size(), buffer_size);
-
-		for (int i = 0; i < items_to_copy; ++i)
-		{
-			buffer[i] = front_vec[i];
-		}
-
-		output_queue.pop();
-	}
-}
-*/
-
-void signal_threads_to_stop()
-{
-	{
-		std::lock_guard<std::mutex> lock(mtx);
-		stop_thread = true;
-	}
-	cv_input.notify_all();
-	cv_output.notify_all();
+	std::cout << "[SIM] Found " << output_idx.size() << " active outputs." << std::endl;
+	return output_idx;
 }
 
 void cleanup_ipc()
 {
 	if (pSharedMem)
 	{
-		pSharedMem->sim_ready = false;
+		pSharedMem->sim_ready = 0;
 		UnmapViewOfFile(pSharedMem);
 		pSharedMem = nullptr;
 	}
@@ -345,164 +203,6 @@ void cleanup_ipc()
 	if (hShutdownEvent)
 		CloseHandle(hShutdownEvent);
 	std::cout << "[IPC] Resources cleaned up." << std::endl;
-}
-
-void console_input_thread()
-{
-	std::cout << "[Console] Entered console mode. Type an input index (e.g., 5) and press Enter." << std::endl;
-	std::cout << "[Console] Type 'r(eset)' to reset the circuit, or 'e(xit)' to quit." << std::endl;
-
-	std::string line;
-	while (std::getline(std::cin, line))
-	{
-		if (line == "exit" || line == "e")
-		{
-			signal_threads_to_stop();
-			break;
-		}
-		else if (line == "reset" || line == "r")
-		{
-			{
-				std::lock_guard<std::mutex> lock(mtx);
-				input_queue.push(-1);
-			}
-			cv_input.notify_one();
-			std::cout << "[Console] Reset signal sent." << std::endl;
-		}
-		else
-		{
-			try
-			{
-				int input_idx = std::stoi(line);
-				{
-					std::lock_guard<std::mutex> lock(mtx);
-					input_queue.push(input_idx);
-				}
-				cv_input.notify_one();
-			}
-			catch (const std::invalid_argument& ia)
-			{
-				std::cerr << "[Console] Invalid input. Please enter an integer, 'reset', or 'exit'." << std::endl;
-			}
-			catch (const std::out_of_range& oor)
-			{
-				std::cerr << "[Console] Input number is out of range." << std::endl;
-			}
-		}
-	}
-	std::cout << "[Console] Input thread finished." << std::endl;
-}
-
-void console_output_thread()
-{
-	while (!stop_thread)
-	{
-		std::vector<int32_t> output_idx;
-		{
-			std::unique_lock<std::mutex> lock(mtx);
-			cv_output.wait(lock, []
-				{ return !output_queue.empty() || stop_thread; });
-
-			if (stop_thread)
-				break;
-
-			output_idx = output_queue.front();
-			output_queue.pop();
-		}
-
-		std::cout << "[Output] Detected " << output_idx.size() << " active output(s): ";
-		if (output_idx.empty())
-		{
-			std::cout << "None" << std::endl;
-		}
-		else
-		{
-			for (size_t i = 0; i < output_idx.size(); ++i)
-			{
-				std::cout << output_idx[i] << (i == output_idx.size() - 1 ? "" : ", ");
-			}
-			std::cout << std::endl;
-		}
-	}
-	std::cout << "[Console] Output thread finished." << std::endl;
-}
-
-void ipc_input_thread()
-{
-	while (!stop_thread)
-	{
-		HANDLE handles[] = { hInputEvent, hShutdownEvent };
-		DWORD waitResult = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
-
-		if (waitResult == WAIT_OBJECT_0 + 1 || stop_thread)
-		{
-			break;
-		}
-
-		uint64_t read_idx = pSharedMem->input_read_idx.load(std::memory_order_acquire);
-		uint64_t write_idx = pSharedMem->input_write_idx.load(std::memory_order_acquire);
-
-		while (read_idx != write_idx)
-		{
-			int input_val = pSharedMem->input_buffer[read_idx % IPC_INPUT_BUFFER_SIZE];
-			{
-				std::lock_guard<std::mutex> lock(mtx);
-				input_queue.push(input_val);
-			}
-			read_idx++;
-		}
-
-		pSharedMem->input_read_idx.store(read_idx, std::memory_order_release);
-		cv_input.notify_one();
-	}
-	std::cout << "[IPC] Input thread finished." << std::endl;
-}
-
-void ipc_output_thread()
-{
-	while (!stop_thread)
-	{
-		std::vector<int32_t> output_data;
-		{
-			std::unique_lock<std::mutex> lock(mtx);
-			cv_output.wait(lock, [&] { return !output_queue.empty() || stop_thread; });
-			if (stop_thread) break;
-			output_data = output_queue.front();
-			output_queue.pop();
-		}
-
-		uint64_t write_idx = pSharedMem->output_write_idx.load(std::memory_order_acquire);
-		uint64_t read_idx = pSharedMem->output_read_idx.load(std::memory_order_acquire);
-
-		while (((write_idx + 1) % IPC_MAX_OUTPUT_SETS) == (read_idx % IPC_MAX_OUTPUT_SETS))
-		{
-			if (stop_thread) return;
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
-			read_idx = pSharedMem->output_read_idx.load(std::memory_order_acquire);
-		}
-
-		uint64_t current_write_idx = write_idx % IPC_MAX_OUTPUT_SETS;
-		OutputSet& target_set = pSharedMem->output_sets[current_write_idx];
-
-		int32_t data_len = static_cast<int32_t>(output_data.size());
-		if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
-		{
-			std::cerr << "[IPC] ERROR: Output data size (" << data_len
-				<< ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
-				<< "). Truncating output." << std::endl;
-			data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
-		}
-
-		target_set.count = data_len;
-		if (data_len > 0)
-		{
-			memcpy(target_set.ids, output_data.data(), data_len * sizeof(int32_t));
-		}
-
-		pSharedMem->output_write_idx.store(write_idx + 1, std::memory_order_release);
-		SetEvent(hOutputEvent);
-	}
-	std::cout << "[IPC] Output thread finished." << std::endl;
 }
 
 bool initialize_ipc()
@@ -546,19 +246,67 @@ bool initialize_ipc()
 	}
 
 	new (pSharedMem) SharedMemoryLayout();
-	pSharedMem->sim_ready = true;
+	pSharedMem->input_ready = 0;
+	pSharedMem->output_ready = 0;
+	pSharedMem->shutdown = 0;
+	pSharedMem->sim_ready = 1;
 
 	return true;
 }
 
 void run_console_mode()
 {
-	std::cout << "[Main] Starting in Console Mode." << std::endl;
-	std::thread console_in(console_input_thread);
-	std::thread console_out(console_output_thread);
+	std::cout << "[Console] Entered console mode. Type an input index (e.g., 5) and press Enter." << std::endl;
+	std::cout << "[Console] Type 'r(eset)' to reset the circuit, or 'e(xit)' to quit." << std::endl;
 
-	console_in.join();
-	console_out.join();
+	std::string line;
+	while (std::getline(std::cin, line))
+	{
+		if (line == "exit" || line == "e")
+		{
+			break;
+		}
+
+		int input_id;
+		if (line == "reset" || line == "r")
+		{
+			input_id = -1;
+		}
+		else
+		{
+			try
+			{
+				input_id = std::stoi(line);
+			}
+			catch (const std::invalid_argument& ia)
+			{
+				std::cerr << "[Console] Invalid input. Please enter an integer, 'reset', or 'exit'." << std::endl;
+				continue;
+			}
+			catch (const std::out_of_range& oor)
+			{
+				std::cerr << "[Console] Input number is out of range." << std::endl;
+				continue;
+			}
+		}
+
+		auto output_idx = run_simulation_cycle(input_id);
+
+		std::cout << "[Output] Detected " << output_idx.size() << " active output(s): ";
+		if (output_idx.empty())
+		{
+			std::cout << "None" << std::endl;
+		}
+		else
+		{
+			for (size_t i = 0; i < output_idx.size(); ++i)
+			{
+				std::cout << output_idx[i] << (i == output_idx.size() - 1 ? "" : ", ");
+			}
+			std::cout << std::endl;
+		}
+	}
+	std::cout << "[Console] Exiting console mode." << std::endl;
 }
 
 void run_ipc_mode()
@@ -569,18 +317,49 @@ void run_ipc_mode()
 		return;
 	}
 
-	std::cout << "[IPC] Shared memory and events created. Waiting for client connection..." << std::endl;
+	std::cout << "[IPC] Shared memory and events created. Waiting for client commands..." << std::endl;
 
-	std::thread ipc_in(ipc_input_thread);
-	std::thread ipc_out(ipc_output_thread);
+	HANDLE handles[] = { hInputEvent, hShutdownEvent };
 
-	WaitForSingleObject(hShutdownEvent, INFINITE);
-	std::cout << "[Main] Received IPC shutdown signal." << std::endl;
+	while (true)
+	{
+		DWORD waitResult = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
 
-	signal_threads_to_stop();
+		if (waitResult == WAIT_OBJECT_0 + 1 || pSharedMem->shutdown != 0)
+		{
+			std::cout << "[IPC] Shutdown signal received." << std::endl;
+			break;
+		}
 
-	ipc_in.join();
-	ipc_out.join();
+		if (waitResult == WAIT_OBJECT_0)
+		{
+			if (pSharedMem->input_ready == 1)
+			{
+				int input_id = pSharedMem->input_id;
+				pSharedMem->input_ready = 0;
+
+				auto outputs = run_simulation_cycle(input_id);
+
+				int32_t data_len = static_cast<int32_t>(outputs.size());
+				if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
+				{
+					std::cerr << "[IPC] ERROR: Output data size (" << data_len
+						<< ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
+						<< "). Truncating output." << std::endl;
+					data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
+				}
+
+				pSharedMem->output_count = data_len;
+				if (data_len > 0)
+				{
+					memcpy(pSharedMem->output_ids, outputs.data(), data_len * sizeof(int32_t));
+				}
+
+				pSharedMem->output_ready = 1;
+				SetEvent(hOutputEvent);
+			}
+		}
+	}
 
 	cleanup_ipc();
 }
@@ -595,9 +374,10 @@ int main(int argc, char** argv)
 
 	Verilated::commandArgs(argc, argv);
 	top = new VWiring;
-	stop_thread = false;
-	sim_thread = std::thread(simulation_loop);
-	std::cout << "[Main] Verilator core initialized, simulation thread started." << std::endl;
+	
+	initial_reset();
+
+	std::cout << "[Main] Verilator core initialized." << std::endl;
 
 	if (mode == "ipc")
 	{
@@ -608,11 +388,6 @@ int main(int argc, char** argv)
 		run_console_mode();
 	}
 
-	std::cout << "[Main] Waiting for simulation thread to shut down..." << std::endl;
-	if (sim_thread.joinable())
-	{
-		sim_thread.join();
-	}
 	delete top;
 	top = nullptr;
 	std::cout << "[Main] Application finished." << std::endl;

@@ -17,62 +17,29 @@ namespace Wirelog
         private const string OutputEventName = "TerrariaWiringSim_OutputEvent";
         private const string ShutdownEventName = "TerrariaWiringSim_ShutdownEvent";
 
-        private const int IpcInputBufferSize = 8192;
         private const int IpcMaxOutputIdsPerSet = 65536;
-        private const int IpcMaxOutputSets = 1024;
 
-        private const int SimReadyOffset = 0;
-        private const int InputWriteIdxOffset = SimReadyOffset + sizeof(int);
-        private const int InputReadIdxOffset = InputWriteIdxOffset + sizeof(long);
-        private const int InputBufferOffset = InputReadIdxOffset + sizeof(long);
-        private const int OutputWriteIdxOffset = InputBufferOffset + IpcInputBufferSize * sizeof(int);
-        private const int OutputReadIdxOffset = OutputWriteIdxOffset + sizeof(long);
-        private const int OutputSetsOffset = OutputReadIdxOffset + sizeof(long);
+        private static readonly int SimReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("SimReady").ToInt32();
+        private static readonly int InputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputReady").ToInt32();
+        private static readonly int OutputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputReady").ToInt32();
+        private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>("Shutdown").ToInt32();
+        private static readonly int InputIdOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputId").ToInt32();
+        private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputCount").ToInt32();
+        private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputIds").ToInt32();
 
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct OutputSet
-        {
-            public int Count;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxOutputIdsPerSet)]
-            public int[] Ids;
-
-            public OutputSet()
-            {
-                Count = 0;
-                Ids = new int[IpcMaxOutputIdsPerSet];
-            }
-        }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct SharedMemoryLayout
         {
-            [MarshalAs(UnmanagedType.I4)]
-            public int SimReady;
+            public int SimReady; 
+            public int InputReady;
+            public int OutputReady;
+            public int Shutdown;
 
-            public long InputWriteIdx;
-            public long InputReadIdx;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcInputBufferSize)]
-            public int[] InputBuffer;
-
-            public long OutputWriteIdx;
-            public long OutputReadIdx;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxOutputSets)]
-            public OutputSet[] OutputSets;
-
-            public SharedMemoryLayout()
-            {
-                SimReady = 0;
-                InputWriteIdx = 0;
-                InputReadIdx = 0;
-                InputBuffer = new int[IpcInputBufferSize];
-                OutputWriteIdx = 0;
-                OutputReadIdx = 0;
-                OutputSets = new OutputSet[IpcMaxOutputSets];
-                for (int i = 0; i < IpcMaxOutputSets; i++)
-                {
-                    OutputSets[i] = new OutputSet();
-                }
-            }
+            public int InputId;
+            public int OutputCount;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxOutputIdsPerSet)]
+            public int[] OutputIds;
         }
 
         private static Process _simProcess;
@@ -190,6 +157,15 @@ namespace Wirelog
 
         public static void Stop()
         {
+            if (_accessor != null)
+            {
+                try
+                {
+                    _accessor.Write(ShutdownOffset, 1);
+                }
+                catch { }
+            }
+
             try
             {
                 _shutdownEvent?.Set();
@@ -250,10 +226,10 @@ namespace Wirelog
 
             try
             {
-                long writeIdx = _accessor.ReadInt64(InputWriteIdxOffset);
+                _accessor.Write(OutputReadyOffset, 0);
 
-                _accessor.Write(InputBufferOffset + writeIdx % IpcInputBufferSize * sizeof(int), inputPortId);
-                _accessor.Write(InputWriteIdxOffset, writeIdx + 1);
+                _accessor.Write(InputIdOffset, inputPortId);
+                _accessor.Write(InputReadyOffset, 1);
 
                 _inputEvent.Set();
 
@@ -264,27 +240,21 @@ namespace Wirelog
                     return [];
                 }
 
-                long outputReadIdx = _accessor.ReadInt64(OutputReadIdxOffset);
-                long outputWriteIdx = _accessor.ReadInt64(OutputWriteIdxOffset);
-
-                if (outputReadIdx >= outputWriteIdx)
+                _accessor.Read(OutputReadyOffset, out int outputReady);
+                if (outputReady == 0)
                 {
-                    Main.NewText("No new output data available.");
+                    Main.NewText("No new output data available (flag not set).");
                     return [];
                 }
 
-                long offset = OutputSetsOffset + outputReadIdx % IpcMaxOutputSets * (sizeof(int) + IpcMaxOutputIdsPerSet * sizeof(int));
-
-                int count = _accessor.ReadInt32(offset);
+                int count = _accessor.ReadInt32(OutputCountOffset);
                 var outputIds = new List<int>();
                 if (count > 0)
                 {
                     var buffer = new int[count];
-                    _accessor.ReadArray(offset + sizeof(int), buffer, 0, count);
+                    _accessor.ReadArray(OutputIdsOffset, buffer, 0, count);
                     outputIds.AddRange(buffer);
                 }
-
-                _accessor.Write(OutputReadIdxOffset, outputReadIdx + 1);
 
                 return outputIds;
             }
