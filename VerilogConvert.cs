@@ -128,7 +128,7 @@ namespace Wirelog
             {
                 var inputLamps = GetLampNames(gate.InputLamps.Where(gate => gate.Type != LampType.Fault).ToList());
                 var inputFaultLamp = GetLampNames([gate.InputLamps.First(gate => gate.Type == LampType.Fault)]);
-                var clockReset = inputType == "Multi" ? ".clk(clk), .logic_reset(logic_reset)" : ".clk(clk), .logic_reset(logic_reset)";
+                var clockReset = inputType == "Multi" ? ".clk(clk), .reset(reset), .logic_reset(logic_reset)" : ".clk(clk), .logic_reset(logic_reset)";
                 connections = $"{clockReset}, .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires})";
             }
             else
