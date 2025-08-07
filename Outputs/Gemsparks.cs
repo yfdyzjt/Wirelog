@@ -4,19 +4,20 @@ using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
-    public static class Torches
+    public static class Gemsparks
     {
         public static void Activate(Point16 pos)
         {
-            // Wiring.ToggleTorch(pos.X, pos.Y, Main.tile[pos], null);
-            if (Main.tile[pos].TileFrameX < 66)
+            var tile = Main.tile[pos];
+            if (tile.TileType >= 262)
             {
-                Main.tile[pos].TileFrameX += 66;
+                tile.TileType -= 7;
             }
             else
             {
-                Main.tile[pos].TileFrameX -= 66;
+                tile.TileType += 7;
             }
+            WorldGen.SquareTileFrame(pos.X, pos.Y, true);
             NetMessage.SendTileSquare(-1, pos.X, pos.Y, TileChangeType.None);
         }
     }
