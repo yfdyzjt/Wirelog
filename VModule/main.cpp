@@ -140,7 +140,7 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 		return {};
 	}
 
-	std::cout << "[SIM] Processing new input: " << input_idx << std::endl;
+	// std::cout << "[SIM] Processing new input: " << input_idx << std::endl;
 
 	top->logic_reset = 1;
 	toggle_clock();
@@ -156,14 +156,17 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 	clear_input(top->in);
 	toggle_eval();
 
-	std::cout << "[SIM] Input pulse sent. Running wiring..." << std::endl;
+	// std::cout << "[SIM] Input pulse sent. Running wiring..." << std::endl;
 
 	int cycle_count = 0;
+	auto start_time = std::chrono::high_resolution_clock::now();
 	do
 	{
 		toggle_clock();
 		cycle_count++;
 	} while (top->wiring_running != 0 && cycle_count < MAX_CYCLE_COUNT);
+	auto end_time = std::chrono::high_resolution_clock::now();
+	auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
 	if (cycle_count >= MAX_CYCLE_COUNT)
 	{
@@ -171,7 +174,8 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 	}
 	else
 	{
-		std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles." << std::endl;
+		std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles, " 
+			<< "duration: " << duration_us << " us." << std::endl;
 	}
 
 	std::vector<int32_t> output_idx;
@@ -182,7 +186,7 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 			output_idx.push_back(i);
 		}
 	}
-	std::cout << "[SIM] Found " << output_idx.size() << " active outputs." << std::endl;
+	// std::cout << "[SIM] Found " << output_idx.size() << " active outputs." << std::endl;
 	return output_idx;
 }
 

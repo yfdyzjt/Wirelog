@@ -1,5 +1,6 @@
 using Terraria;
 using Terraria.DataStructures;
+using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
@@ -7,7 +8,15 @@ namespace Wirelog.Outputs
     {
         public static void Activate(Point16 pos)
         {
-            Main.NewText($"Hit torch at {pos}");
+            if (Main.tile[pos].TileFrameX < 66)
+            {
+                Main.tile[pos].TileFrameX += 66;
+            }
+            else
+            {
+                Main.tile[pos].TileFrameX -= 66;
+            }
+            NetMessage.SendTileSquare(-1, pos.X, pos.Y, TileChangeType.None);
         }
     }
 }
