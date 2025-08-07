@@ -10,27 +10,34 @@ module Gate_Multi_Single_Fault #(
     output wire out
 );
 
-    reg [$clog2(INPUT_COUNT+1)-1:0] ones_count;
-    
-    integer i;
-    always @(*) begin
-        ones_count = 0;
-        for (i = 0; i < INPUT_COUNT; i = i + 1) begin
-            if (in[i]) ones_count = ones_count + 1;
-        end
-    end
-    
     reg [11:0] lfsr_reg = RAND_SEED;
     wire lfsr_feedback = lfsr_reg[11] ^ lfsr_reg[5] ^ lfsr_reg[3] ^ lfsr_reg[0];
-    
+
+    integer i;
+    reg [11:0] threshold;
+    reg [INPUT_COUNT-1:0] in_prev;
+    reg [$clog2(INPUT_COUNT+1)-1:0] ones_count;
+
     always @(posedge clk) begin
-        if (reset)
+        if (reset) begin
             lfsr_reg <= RAND_SEED;
-        else
+            threshold <= 0;
+            in_prev <= 0;
+        end
+        else begin
             lfsr_reg <= {lfsr_reg[10:0], lfsr_feedback};
+            if (in_prev != in) begin
+                ones_count = 0;
+                for (i = 0; i < INPUT_COUNT; i = i + 1) begin
+                    if (in[i]) ones_count = ones_count + 1;
+                end
+                threshold <= ones_count * (12'hFFF / INPUT_COUNT);
+                in_prev <= in;
+            end
+        end
     end
-    
-    wire random_value = (lfsr_reg < (ones_count * (12'hFFF / INPUT_COUNT)));
+
+    wire random_value = (lfsr_reg < threshold);
 
     wire result = fault_in & random_value;
 
