@@ -22,8 +22,7 @@ namespace Wirelog
         private const int IpcMaxOutputSets = 1024;
 
         private const int SimReadyOffset = 0;
-        private const int ClientConnectedOffset = SimReadyOffset + 4;
-        private const int InputWriteIdxOffset = ClientConnectedOffset + 4;
+        private const int InputWriteIdxOffset = SimReadyOffset + 4;
         private const int InputReadIdxOffset = InputWriteIdxOffset + 8;
         private const int InputBufferOffset = InputReadIdxOffset + 8;
         private const int OutputWriteIdxOffset = InputBufferOffset + IpcInputBufferSize * sizeof(int);
@@ -49,8 +48,6 @@ namespace Wirelog
         {
             [MarshalAs(UnmanagedType.I4)]
             public int SimReady;
-            [MarshalAs(UnmanagedType.I4)]
-            public int ClientConnected;
 
             public long InputWriteIdx;
             public long InputReadIdx;
@@ -65,7 +62,6 @@ namespace Wirelog
             public SharedMemoryLayout()
             {
                 SimReady = 0;
-                ClientConnected = 0;
                 InputWriteIdx = 0;
                 InputReadIdx = 0;
                 InputBuffer = new int[IpcInputBufferSize];
@@ -87,32 +83,10 @@ namespace Wirelog
         private static EventWaitHandle _shutdownEvent;
 
         private static long _outputReadIdx = 0;
-        private static Thread _outputCaptureThread;
-        private static bool _stopOutputCapture = false;
 
         public static bool IsRunning => _simProcess != null && !_simProcess.HasExited;
 
-        private static void CaptureSimulatorOutput(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                Main.QueueMainThreadAction(() => Main.NewText($"[SIM] {e.Data}"));
-            }
-        }
 
-        private static void StartOutputCaptureThread()
-        {
-            _stopOutputCapture = false;
-            _outputCaptureThread = new Thread(() =>
-            {
-                while (!_stopOutputCapture && IsRunning)
-                {
-                    Thread.Sleep(100);
-                }
-            });
-            _outputCaptureThread.IsBackground = true;
-            _outputCaptureThread.Start();
-        }
 
         public static void Start()
         {
@@ -135,8 +109,8 @@ namespace Wirelog
                     Arguments = "--ipc",
                     UseShellExecute = false,
                     CreateNoWindow = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false
                 };
 
                 _simProcess = new Process
@@ -145,14 +119,7 @@ namespace Wirelog
                     EnableRaisingEvents = true
                 };
 
-                _simProcess.OutputDataReceived += CaptureSimulatorOutput;
-                _simProcess.ErrorDataReceived += CaptureSimulatorOutput;
-
                 _simProcess.Start();
-                _simProcess.BeginOutputReadLine();
-                _simProcess.BeginErrorReadLine();
-
-                StartOutputCaptureThread();
 
                 Thread.Sleep(1000);
 
@@ -211,8 +178,6 @@ namespace Wirelog
                 {
                     throw new TimeoutException("Failed to connect to event handles after multiple attempts.");
                 }
-
-                _accessor.Write(ClientConnectedOffset, 1);
                 _outputReadIdx = 0;
 
                 Main.NewText("Verilog simulator connected.");
@@ -227,16 +192,6 @@ namespace Wirelog
 
         public static void Stop()
         {
-            _stopOutputCapture = true;
-            if (_outputCaptureThread != null && _outputCaptureThread.IsAlive)
-            {
-                try
-                {
-                    _outputCaptureThread.Join(1000);
-                }
-                catch { }
-            }
-            _outputCaptureThread = null;
 
             try
             {

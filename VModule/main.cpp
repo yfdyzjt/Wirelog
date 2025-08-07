@@ -50,7 +50,6 @@ struct OutputSet
 struct SharedMemoryLayout
 {
     std::atomic<bool> sim_ready;
-    std::atomic<bool> client_connected;
 
     std::atomic<uint64_t> input_write_idx;
     std::atomic<uint64_t> input_read_idx;
@@ -552,7 +551,6 @@ bool initialize_ipc()
 
     new (pSharedMem) SharedMemoryLayout();
     pSharedMem->sim_ready = true;
-    pSharedMem->client_connected = false;
 
     return true;
 }
