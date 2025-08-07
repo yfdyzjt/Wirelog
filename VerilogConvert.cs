@@ -23,12 +23,19 @@ namespace Wirelog
                     output wire [31:0] in_width,
                     output wire [31:0] out_width
                 );
-                    assign wiring_running = |wires;
                     assign in_width = {_inputsPortFound.Count};
                     assign out_width = {_outputsPortFound.Count};
                 """);
-            if (_wires.Count > 0) sb.Append($"    wire [{_wires.Count - 1}:0] wires;");
-            if (_lampsFound.Count > 0) sb.Append($"    wire [{_lampsFound.Count - 1}:0] lamps;");
+
+            if (_wires.Count > 0) 
+                sb.AppendLine($"    wire [{_wires.Count - 1}:0] wires;");
+            if (_lampsFound.Count > 0) 
+                sb.AppendLine($"    wire [{_lampsFound.Count - 1}:0] lamps;");
+            if (_wires.Count > 0)
+                sb.AppendLine($"    assign wiring_running = |wires;");
+            else
+                sb.AppendLine($"    assign wiring_running = 0;");
+
             sb.AppendLine("    // input port module");
             foreach (var inputPort in _inputsPortFound.Values)
             {
@@ -121,7 +128,7 @@ namespace Wirelog
             {
                 var inputLamps = GetLampNames(gate.InputLamps.Where(gate => gate.Type != LampType.Fault).ToList());
                 var inputFaultLamp = GetLampNames([gate.InputLamps.First(gate => gate.Type == LampType.Fault)]);
-                var clockReset = inputType == "Multi" ? ".clk(clk), .reset(reset), .logic_reset(logic_reset)" : ".clk(clk), .logic_reset(logic_reset)";
+                var clockReset = inputType == "Multi" ? ".clk(clk), .logic_reset(logic_reset)" : ".clk(clk), .logic_reset(logic_reset)";
                 connections = $"{clockReset}, .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires})";
             }
             else
