@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class Monoliths
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            WorldGen.SwitchMonolith(pos.X, pos.Y);
+            WorldGen.SwitchMonolith(outputPort.Output.Pos.X, outputPort.Output.Pos.Y);
         }
     }
 }

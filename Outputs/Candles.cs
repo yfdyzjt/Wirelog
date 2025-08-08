@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class Candles
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            Wiring.ToggleCandle(pos.X, pos.Y, Main.tile[pos], null);
+            Wiring.ToggleCandle(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, Main.tile[outputPort.Output.Pos], null);
         }
     }
 }

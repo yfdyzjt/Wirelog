@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class MusicBoxes
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            WorldGen.SwitchMB(pos.X, pos.Y);
+            WorldGen.SwitchMB(outputPort.Output.Pos.X, outputPort.Output.Pos.Y);
         }
     }
 }

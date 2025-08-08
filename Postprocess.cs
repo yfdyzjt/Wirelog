@@ -18,8 +18,19 @@ namespace Wirelog
             MergeInputPorts();
             Main.statusText = $"copy multi input wires and output ports";
             CopyMultiInputWiresAndOutputPorts();
+            Main.statusText = $"postprocess outputs";
+            PostprocessOutput();
+            PruneUnusedComponents();
             Main.statusText = $"set components id";
             SetComponentsId();
+        }
+
+        private static void PostprocessOutput()
+        {
+            foreach (var output in _outputsFound.Values)
+            {
+                Output.Postprocess(output);
+            }
         }
 
         private static void CopyMultiInputWiresAndOutputPorts()

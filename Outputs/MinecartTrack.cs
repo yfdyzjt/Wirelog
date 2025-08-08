@@ -1,15 +1,14 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class MinecartTrack
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            if (WiringWrapper.CheckMech(pos.X, pos.Y, 5))
+            if (WiringWrapper.CheckMech(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, 5))
             {
-                Minecart.FlipSwitchTrack(pos.X, pos.Y);
+                Minecart.FlipSwitchTrack(outputPort.Output.Pos.X, outputPort.Output.Pos.Y);
                 return;
             }
         }

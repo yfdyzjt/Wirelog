@@ -9,7 +9,10 @@ namespace Wirelog
 {
     public class Output
     {
-        private static readonly Action<Point16>[] _outputActivators = new Action<Point16>[Enum.GetValues(typeof(OutputType)).Length];
+        private static readonly Action<OutputPort>[] _outputActivators = new Action<OutputPort>[Enum.GetValues(typeof(OutputType)).Length];
+        private static readonly Action<Output>[] _outputPostprocessors = new Action<Output>[Enum.GetValues(typeof(OutputType)).Length];
+
+        private static readonly Dictionary<Point16, object> _outputAdditionalData = [];
 
         static Output()
         {
@@ -19,18 +22,29 @@ namespace Wirelog
                 {
                     if (Enum.TryParse<OutputType>(type.Name, out var outputType))
                     {
-                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(Point16)], null);
+                        var activateMethod = type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, null, [typeof(OutputPort)], null);
                         if (activateMethod != null)
                         {
-                            _outputActivators[(int)outputType] = (Action<Point16>)Delegate.CreateDelegate(typeof(Action<Point16>), activateMethod);
+                            _outputActivators[(int)outputType] = (Action<OutputPort>)Delegate.CreateDelegate(typeof(Action<OutputPort>), activateMethod);
+                        }
+                        var postprocessMethod = type.GetMethod("Postprocess", BindingFlags.Public | BindingFlags.Static, null, [typeof(Output)], null);
+                        if (postprocessMethod != null)
+                        {
+                            _outputPostprocessors[(int)outputType] = (Action<Output>)Delegate.CreateDelegate(typeof(Action<Output>), postprocessMethod);
                         }
                     }
                 }
             }
         }
-        public static void Activate(OutputType type, Point16 pos)
+
+        public static void Postprocess(Output output)
         {
-            _outputActivators[(int)type]?.Invoke(pos);
+            _outputPostprocessors[(int)output.Type]?.Invoke(output);
+        }
+
+        public static void Activate(OutputType type, OutputPort outputPort)
+        {
+            _outputActivators[(int)type]?.Invoke(outputPort);
         }
 
         public OutputType Type { get; set; }

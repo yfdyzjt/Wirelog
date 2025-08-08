@@ -1,25 +1,24 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class VolcanoLarge
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num95;
             for (num95 = tile.TileFrameY / 18; num95 >= 2; num95 -= 2)
             {
             }
-            num95 = pos.Y - num95;
+            num95 = outputPort.Output.Pos.Y - num95;
             int num96 = tile.TileFrameX / 18;
             if (num96 > 1)
             {
                 num96 -= 2;
             }
-            num96 = pos.X - num96;
+            num96 = outputPort.Output.Pos.X - num96;
             Wiring.SkipWire(num96, num95);
             Wiring.SkipWire(num96, num95 + 1);
             Wiring.SkipWire(num96 + 1, num95);

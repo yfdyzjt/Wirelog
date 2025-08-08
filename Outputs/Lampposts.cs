@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class Lampposts
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            Wiring.ToggleLampPost(pos.X, pos.Y, Main.tile[pos], null, false);
+            Wiring.ToggleLampPost(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, Main.tile[outputPort.Output.Pos], null, false);
         }
     }
 }

@@ -1,3 +1,4 @@
+using MonoMod.Utils;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.DataStructures;
@@ -16,20 +17,63 @@ namespace Wirelog
 
         private static readonly List<Wire> _wires = [];
 
-        public static Dictionary<Point16, Input> InputsFound => _inputsFound;
-        public static Dictionary<int, OutputPort> OutputsPortFound => _outputsPortFound;
+        public static Dictionary<Point16, Input> InputsFound { get; } = [];
+        public static Dictionary<int, OutputPort> OutputsPortFound { get; } = [];
 
         public static void Convert()
         {
             LoadVModules();
-            AllClear();
+            PreClear();
             Preprocess();
             Postprocess();
             VerilogConvert();
+            PostClear();
         }
 
-        private static void AllClear()
+        private static void PreClear()
         {
+            InputsFound.Clear();
+            OutputsPortFound.Clear();
+
+            _inputsFound.Clear();
+            _outputsFound.Clear();
+            _gatesFound.Clear();
+            _lampsFound.Clear();
+            _wires.Clear();
+            _inputsPortFound.Clear();
+            _outputsPortFound.Clear();
+        }
+
+        private static void PostClear()
+        {
+            InputsFound.AddRange(_inputsFound);
+            OutputsPortFound.AddRange(_outputsPortFound);
+
+            foreach (var wire in _wires)
+            {
+                wire.InputPorts.Clear();
+                wire.OutputPorts.Clear();
+                wire.Gates.Clear();
+                wire.Lamps.Clear();
+            }
+            foreach (var lamp in _lampsFound.Values)
+            {
+                lamp.OutputGate = null;
+                lamp.InputWires.Clear();
+            }
+            foreach (var gate in _gatesFound.Values)
+            {
+                gate.InputLamps.Clear();
+                gate.OutputWires.Clear();
+            }
+            foreach (var inputPort in _inputsPortFound.Values)
+            {
+                inputPort.OutputWires.Clear();
+            }
+            foreach (var outputPort in _outputsPortFound.Values)
+            {
+                outputPort.InputWire = null;
+            }
             _inputsFound.Clear();
             _outputsFound.Clear();
             _gatesFound.Clear();

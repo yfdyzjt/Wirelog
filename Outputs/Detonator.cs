@@ -1,18 +1,17 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class Detonator
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num12 = tile.TileFrameX % 36 / 18;
             int num13 = tile.TileFrameY % 36 / 18;
-            int num14 = pos.X - num12;
-            int num15 = pos.Y - num13;
+            int num14 = outputPort.Output.Pos.X - num12;
+            int num15 = outputPort.Output.Pos.Y - num13;
             int num16 = 36;
             if (Main.tile[num14, num15].TileFrameX >= 36)
             {

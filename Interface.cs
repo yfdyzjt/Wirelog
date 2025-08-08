@@ -10,13 +10,13 @@ namespace Wirelog
             if (TryGetInput(pos, out var input))
             {
                 int inputPortId = input.InputPort.Id;
-                var outputIds = VerilogSimulator.SendInputAndWaitForOutput(inputPortId);
+                var outputPortIds = VerilogSimulator.SendInputAndWaitForOutput(inputPortId);
 
-                foreach (var outputId in outputIds)
+                foreach (var outputPortId in outputPortIds)
                 {
-                    if (TryGetOutput(outputId, out var output))
+                    if (Converter.OutputsPortFound.TryGetValue(outputPortId, out var outputPort))
                     {
-                        Output.Activate(output.Type, output.Pos);
+                        Output.Activate(outputPort.Output.Type, outputPort);
                     }
                 }
             }
@@ -41,17 +41,6 @@ namespace Wirelog
                 }
             }
             inputResult = null;
-            return false;
-        }
-
-        private static bool TryGetOutput(int outputId, out Output outputResult)
-        {
-            if (Converter.OutputsPortFound.TryGetValue(outputId, out var outputPort))
-            {
-                outputResult = outputPort.Output;
-                return true;
-            }
-            outputResult = null;
             return false;
         }
     }

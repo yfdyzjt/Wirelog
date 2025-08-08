@@ -1,18 +1,17 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class SnowballLauncherLeft
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int internalX = tile.TileFrameX % 54 / 18;
             int internalY = tile.TileFrameY % 54 / 18;
-            int originX = pos.X - internalX;
-            int originY = pos.Y - internalY;
+            int originX = outputPort.Output.Pos.X - internalX;
+            int originY = outputPort.Output.Pos.Y - internalY;
             short typeX = (short)(tile.TileFrameX / 54);
             int frameOffset = -54;
             if (typeX <= 0)

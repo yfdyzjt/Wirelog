@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class HolidayLights
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            Wiring.ToggleHolidayLight(pos.X, pos.Y, Main.tile[pos], null);
+            Wiring.ToggleHolidayLight(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, Main.tile[outputPort.Output.Pos], null);
         }
     }
 }

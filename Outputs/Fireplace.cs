@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class Fireplace
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            Wiring.ToggleFirePlace(pos.X, pos.Y, Main.tile[pos], null, false);
+            Wiring.ToggleFirePlace(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, Main.tile[outputPort.Output.Pos], null, false);
         }
     }
 }

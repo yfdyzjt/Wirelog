@@ -1,15 +1,14 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class FireworkFountain
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
-            int num71 = pos.Y - tile.TileFrameY / 18;
-            int num72 = pos.X - tile.TileFrameX / 18;
+            var tile = Main.tile[outputPort.Output.Pos];
+            int num71 = outputPort.Output.Pos.Y - tile.TileFrameY / 18;
+            int num72 = outputPort.Output.Pos.X - tile.TileFrameX / 18;
             if (WiringWrapper.CheckMech(num72, num71, 30))
             {
                 bool flag5 = false;

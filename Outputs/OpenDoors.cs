@@ -6,14 +6,14 @@ namespace Wirelog.Outputs
 {
     public static class OpenDoors
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var newPos = pos;
+            var newPos = outputPort.Output.Pos;
             for (int i = -1; i <= 1; i++)
             {
-                if (Main.tile[pos.X + i, pos.Y].TileType is 11 or 10)
+                if (Main.tile[outputPort.Output.Pos.X + i, outputPort.Output.Pos.Y].TileType is 11 or 10)
                 {
-                    newPos = new Point16(pos.X + i, pos.Y);
+                    newPos = new Point16(outputPort.Output.Pos.X + i, outputPort.Output.Pos.Y);
                     break;
                 }
             }

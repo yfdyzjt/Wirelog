@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class Fireworks
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            WorldGen.LaunchRocket(pos.X, pos.Y, true);
+            WorldGen.LaunchRocket(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, true);
         }
     }
 }

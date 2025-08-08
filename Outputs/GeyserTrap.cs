@@ -1,17 +1,16 @@
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class GeyserTrap
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num = tile.TileFrameX / 36;
-            int num2 = pos.X - (tile.TileFrameX - num * 36) / 18;
-            if (WiringWrapper.CheckMech(num2, pos.Y, 200))
+            int num2 = outputPort.Output.Pos.X - (tile.TileFrameX - num * 36) / 18;
+            if (WiringWrapper.CheckMech(num2, outputPort.Output.Pos.Y, 200))
             {
                 int num3 = 654;
                 int damage = 20;
@@ -19,18 +18,19 @@ namespace Wirelog.Outputs
                 Vector2 vector;
                 if (num < 2)
                 {
-                    vector = new Vector2((float)(num2 + 1), (float)pos.Y) * 16f;
+                    vector = new Vector2((float)(num2 + 1), (float)outputPort.Output.Pos.Y) * 16f;
                     zero = new Vector2(0f, -8f);
                 }
                 else
                 {
-                    vector = new Vector2((float)(num2 + 1), (float)(pos.Y + 1)) * 16f;
+                    vector = new Vector2((float)(num2 + 1), (float)(outputPort.Output.Pos.Y + 1)) * 16f;
                     zero = new Vector2(0f, 8f);
                 }
                 if (num3 != 0)
                 {
-                    Projectile.NewProjectile(Wiring.GetProjectileSource(num2, pos.Y), (float)((int)vector.X), (float)((int)vector.Y), zero.X, zero.Y, num3, damage, 2f, Main.myPlayer, 0f, 0f, 0f);
+                    Projectile.NewProjectile(Wiring.GetProjectileSource(num2, outputPort.Output.Pos.Y), (float)((int)vector.X), (float)((int)vector.Y), zero.X, zero.Y, num3, damage, 2f, Main.myPlayer, 0f, 0f, 0f);
                 }
             }
+        }
     }
 }

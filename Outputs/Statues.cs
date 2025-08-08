@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.GameContent.Events;
 using Terraria.ID;
 
@@ -8,15 +7,15 @@ namespace Wirelog.Outputs
 {
     public static class Statues
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             if (tile.TileType == 531)
             {
                 int num119 = (int)(tile.TileFrameX / 36);
                 int num120 = (int)(tile.TileFrameY / 54);
-                int num121 = pos.X - ((int)tile.TileFrameX - num119 * 36) / 18;
-                int num122 = pos.Y - ((int)tile.TileFrameY - num120 * 54) / 18;
+                int num121 = outputPort.Output.Pos.X - ((int)tile.TileFrameX - num119 * 36) / 18;
+                int num122 = outputPort.Output.Pos.Y - ((int)tile.TileFrameY - num120 * 54) / 18;
                 if (WiringWrapper.CheckMech(num121, num122, 900))
                 {
                     Vector2 vector2 = new Vector2((float)(num121 + 1), (float)num122) * 16f;
@@ -35,12 +34,12 @@ namespace Wirelog.Outputs
             {
                 int num148 = (int)(tile.TileFrameY / 18);
                 num148 %= 3;
-                int num149 = pos.Y - num148;
+                int num149 = outputPort.Output.Pos.Y - num148;
                 int num150;
                 for (num150 = (int)(tile.TileFrameX / 18); num150 >= 2; num150 -= 2)
                 {
                 }
-                num150 = pos.X - num150;
+                num150 = outputPort.Output.Pos.X - num150;
                 short num151;
                 if (Main.tile[num150, num149].TileFrameX == 0)
                 {
@@ -68,12 +67,12 @@ namespace Wirelog.Outputs
             {
                 int num154 = (int)(tile.TileFrameY / 18);
                 num154 %= 3;
-                int num155 = pos.Y - num154;
+                int num155 = outputPort.Output.Pos.Y - num154;
                 int num156;
                 for (num156 = (int)(tile.TileFrameX / 18); num156 >= 2; num156 -= 2)
                 {
                 }
-                num156 = pos.X - num156;
+                num156 = outputPort.Output.Pos.X - num156;
                 short num157;
                 if (Main.tile[num156, num155].TileFrameX < 72)
                 {
@@ -99,7 +98,7 @@ namespace Wirelog.Outputs
             }
             else if(tile.TileType == 105)
             {
-                int num130 = pos.Y - (int)(tile.TileFrameY / 18);
+                int num130 = outputPort.Output.Pos.Y - (int)(tile.TileFrameY / 18);
                 int num131 = (int)(tile.TileFrameX / 18);
                 int num132 = 0;
                 while (num131 >= 2)
@@ -107,9 +106,9 @@ namespace Wirelog.Outputs
                     num131 -= 2;
                     num132++;
                 }
-                num131 = pos.X - num131;
-                num131 = pos.X - (int)(tile.TileFrameX % 36 / 18);
-                num130 = pos.Y - (int)(tile.TileFrameY % 54 / 18);
+                num131 = outputPort.Output.Pos.X - num131;
+                num131 = outputPort.Output.Pos.X - (int)(tile.TileFrameX % 36 / 18);
+                num130 = outputPort.Output.Pos.Y - (int)(tile.TileFrameY % 54 / 18);
                 int num133 = (int)(tile.TileFrameY / 54);
                 num133 %= 3;
                 num132 = (int)(tile.TileFrameX / 36) + num133 * 55;

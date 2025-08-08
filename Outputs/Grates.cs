@@ -1,23 +1,22 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class Grates
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            if (Main.tile[pos].TileType == 546)
+            if (Main.tile[outputPort.Output.Pos].TileType == 546)
             {
-                Main.tile[pos].TileType = 557;
+                Main.tile[outputPort.Output.Pos].TileType = 557;
             }
             else
             {
-                Main.tile[pos].TileType = 546;
+                Main.tile[outputPort.Output.Pos].TileType = 546;
             }
-            WorldGen.SquareTileFrame(pos.X, pos.Y, true);
-            NetMessage.SendTileSquare(-1, pos.X, pos.Y, TileChangeType.None);
+            WorldGen.SquareTileFrame(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, true);
+            NetMessage.SendTileSquare(-1, outputPort.Output.Pos.X, outputPort.Output.Pos.Y, TileChangeType.None);
         }
     }
 }

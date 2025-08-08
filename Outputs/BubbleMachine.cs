@@ -1,20 +1,19 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class BubbleMachine
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num79;
             for (num79 = tile.TileFrameX / 18; num79 >= 3; num79 -= 3) ;
             int num80;
             for (num80 = tile.TileFrameY / 18; num80 >= 3; num80 -= 3) ;
-            int num81 = pos.X - num79;
-            int num82 = pos.Y - num80;
+            int num81 = outputPort.Output.Pos.X - num79;
+            int num82 = outputPort.Output.Pos.Y - num80;
             int num83 = 54;
             if (Main.tile[num81, num82].TileFrameX >= 54)
             {

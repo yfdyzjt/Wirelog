@@ -1,14 +1,13 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class Gemsparks
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             if (tile.TileType >= 262)
             {
                 tile.TileType -= 7;
@@ -17,8 +16,8 @@ namespace Wirelog.Outputs
             {
                 tile.TileType += 7;
             }
-            WorldGen.SquareTileFrame(pos.X, pos.Y, true);
-            NetMessage.SendTileSquare(-1, pos.X, pos.Y, TileChangeType.None);
+            WorldGen.SquareTileFrame(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, true);
+            NetMessage.SendTileSquare(-1, outputPort.Output.Pos.X, outputPort.Output.Pos.Y, TileChangeType.None);
         }
     }
 }

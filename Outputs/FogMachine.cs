@@ -1,20 +1,19 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class FogMachine
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num86;
             for (num86 = tile.TileFrameX / 18; num86 >= 2; num86 -= 2) ;
             int num87;
             for (num87 = tile.TileFrameY / 18; num87 >= 2; num87 -= 2) ;
-            int num88 = pos.X - num86;
-            int num89 = pos.Y - num87;
+            int num88 = outputPort.Output.Pos.X - num86;
+            int num89 = outputPort.Output.Pos.Y - num87;
             int num90 = 36;
             if (Main.tile[num88, num89].TileFrameX >= 36)
             {

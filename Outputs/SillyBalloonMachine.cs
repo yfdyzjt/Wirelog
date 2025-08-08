@@ -1,18 +1,17 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class SillyBalloonMachine
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num2 = tile.TileFrameX % 54 / 18;
             int num3 = tile.TileFrameY % 54 / 18;
-            int num4 = pos.X - num2;
-            int num5 = pos.Y - num3;
+            int num4 = outputPort.Output.Pos.X - num2;
+            int num5 = outputPort.Output.Pos.Y - num3;
             int num6 = 54;
             if (Main.tile[num4, num5].TileFrameY >= 54)
             {

@@ -1,9 +1,7 @@
-using Terraria.DataStructures;
-
 namespace Wirelog.Outputs
 {
     public static class ClosedDoors
     {
-        public static void Activate(Point16 pos) => OpenDoors.Activate(pos);
+        public static void Activate(OutputPort outputPort) => OpenDoors.Activate(outputPort);
     }
 }

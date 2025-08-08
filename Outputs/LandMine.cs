@@ -1,13 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
 {
     public static class LandMine
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            WorldGen.ExplodeMine(pos.X, pos.Y, true);
+            WorldGen.ExplodeMine(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, true);
         }
     }
 }

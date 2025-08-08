@@ -1,19 +1,18 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class CannonsRight
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             var frameYOffset = -54;
             int internalX = tile.TileFrameX % 72 / 18;
             int internalY = tile.TileFrameY % 54 / 18;
-            int originX = pos.X - internalX;
-            int originY = pos.Y - internalY;
+            int originX = outputPort.Output.Pos.X - internalX;
+            int originY = outputPort.Output.Pos.Y - internalY;
             int typeY = tile.TileFrameY / 54;
             if (typeY <= 0)
             {

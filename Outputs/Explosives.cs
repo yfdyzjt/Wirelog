@@ -1,16 +1,15 @@
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class Explosives
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            WorldGen.KillTile(pos.X, pos.Y, false, false, true);
-            NetMessage.SendTileSquare(-1, pos.X, pos.Y, TileChangeType.None);
-            Projectile.NewProjectile(Wiring.GetProjectileSource(pos.X, pos.Y), pos.X * 16 + 8, pos.Y * 16 + 8, 0f, 0f, 108, 500, 10f, Main.myPlayer, 0f, 0f, 0f);
+            WorldGen.KillTile(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, false, false, true);
+            NetMessage.SendTileSquare(-1, outputPort.Output.Pos.X, outputPort.Output.Pos.Y, TileChangeType.None);
+            Projectile.NewProjectile(Wiring.GetProjectileSource(outputPort.Output.Pos.X, outputPort.Output.Pos.Y), outputPort.Output.Pos.X * 16 + 8, outputPort.Output.Pos.Y * 16 + 8, 0f, 0f, 108, 500, 10f, Main.myPlayer, 0f, 0f, 0f);
         }
     }
 }

@@ -1,20 +1,19 @@
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.DataStructures;
-using Terraria.Localization;
 using Terraria.ID;
+using Terraria.Localization;
 
 namespace Wirelog.Outputs
 {
     public static class AnnouncementBox
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var tile = Main.tile[pos];
+            var tile = Main.tile[outputPort.Output.Pos];
             int num31 = tile.TileFrameX % 36 / 18;
             int num32 = tile.TileFrameY % 36 / 18;
-            int num33 = pos.X - num31;
-            int num34 = pos.Y - num32;
+            int num33 = outputPort.Output.Pos.X - num31;
+            int num34 = outputPort.Output.Pos.Y - num32;
             if (!Main.AnnouncementBoxDisabled)
             {
                 Color pink = Color.Pink;

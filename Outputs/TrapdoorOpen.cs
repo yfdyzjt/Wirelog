@@ -6,14 +6,14 @@ namespace Wirelog.Outputs
 {
     public static class TrapdoorOpen
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            var newPos = pos;
+            var newPos = outputPort.Output.Pos;
             for (int i = -1; i <= 1; i++)
             {
-                if (Main.tile[pos.X, pos.Y + i].TileType is 386 or 387)
+                if (Main.tile[outputPort.Output.Pos.X, outputPort.Output.Pos.Y + i].TileType is 386 or 387)
                 {
-                    newPos = new Point16(pos.X, pos.Y + i);
+                    newPos = new Point16(outputPort.Output.Pos.X, outputPort.Output.Pos.Y + i);
                     break;
                 }
             }

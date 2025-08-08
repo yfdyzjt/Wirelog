@@ -1,14 +1,12 @@
 using Terraria;
-using Terraria.DataStructures;
-using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
     public static class Torches
     {
-        public static void Activate(Point16 pos)
+        public static void Activate(OutputPort outputPort)
         {
-            Wiring.ToggleTorch(pos.X, pos.Y, Main.tile[pos], null);
+            Wiring.ToggleTorch(outputPort.Output.Pos.X, outputPort.Output.Pos.Y, Main.tile[outputPort.Output.Pos], null);
         }
     }
 }
