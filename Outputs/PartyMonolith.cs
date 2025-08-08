@@ -1,14 +1,13 @@
-using Terraria;
 using Terraria.DataStructures;
-using Terraria.ID;
+using Terraria.GameContent.Events;
 
 namespace Wirelog.Outputs
 {
-    public static class Torches
+    public static class PartyMonolith
     {
         public static void Activate(Point16 pos)
         {
-            Wiring.ToggleTorch(pos.X, pos.Y, Main.tile[pos], null);
+            BirthdayParty.ToggleManualParty();
         }
     }
 }

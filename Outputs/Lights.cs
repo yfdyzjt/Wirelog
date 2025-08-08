@@ -1,14 +1,13 @@
 using Terraria;
 using Terraria.DataStructures;
-using Terraria.ID;
 
 namespace Wirelog.Outputs
 {
-    public static class Torches
+    public static class Lights
     {
         public static void Activate(Point16 pos)
         {
-            Wiring.ToggleTorch(pos.X, pos.Y, Main.tile[pos], null);
+            Wiring.Toggle2x2Light(pos.X, pos.Y, Main.tile[pos], null, false);
         }
     }
 }

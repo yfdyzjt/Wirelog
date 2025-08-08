@@ -1,8 +1,8 @@
-using System.Numerics;
+using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.DataStructures;
 
-namespace Wirelog.Inputs
+namespace Wirelog.Outputs
 {
     public static class GeyserTrap
     {
@@ -32,6 +32,5 @@ namespace Wirelog.Inputs
                     Projectile.NewProjectile(Wiring.GetProjectileSource(num2, pos.Y), (float)((int)vector.X), (float)((int)vector.Y), zero.X, zero.Y, num3, damage, 2f, Main.myPlayer, 0f, 0f, 0f);
                 }
             }
-        }
     }
 }

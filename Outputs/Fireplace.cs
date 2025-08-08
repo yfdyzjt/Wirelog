@@ -7,7 +7,7 @@ namespace Wirelog.Outputs
     {
         public static void Activate(Point16 pos)
         {
-            Wiring.ToggleFirePlace(pos.X, pos.Y, Main.tile[pos], null, true);
+            Wiring.ToggleFirePlace(pos.X, pos.Y, Main.tile[pos], null, false);
         }
     }
 }

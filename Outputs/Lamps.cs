@@ -1,3 +1,4 @@
+using Terraria;
 using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
@@ -6,6 +7,7 @@ namespace Wirelog.Outputs
     {
         public static void Activate(Point16 pos)
         {
+            Wiring.ToggleLamp(pos.X, pos.Y, Main.tile[pos], null, false);
         }
     }
 }
