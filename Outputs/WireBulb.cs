@@ -13,7 +13,7 @@ namespace Wirelog.Outputs
                 var outputPortColorMap = (Dictionary<OutputPort, WireType>)obj;
                 if (outputPortColorMap.TryGetValue(outputPort, out var wireColor))
                 {
-                    var tile = Main.tile[outputPort.Output.Pos.X, outputPort.Output.Pos.X];
+                    var tile = Main.tile[outputPort.Output.Pos.X, outputPort.Output.Pos.Y];
                     short num77 = (short)(tile.TileFrameX / 18);
                     bool flag6 = num77 % 2 >= 1;
                     bool flag7 = num77 % 4 >= 2;
@@ -48,7 +48,7 @@ namespace Wirelog.Outputs
                     {
                         tile.TileFrameX -= num78;
                     }
-                    NetMessage.SendTileSquare(-1, outputPort.Output.Pos.X, outputPort.Output.Pos.X, TileChangeType.None);
+                    NetMessage.SendTileSquare(-1, outputPort.Output.Pos.X, outputPort.Output.Pos.Y, TileChangeType.None);
                 }
             }
         }
