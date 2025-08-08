@@ -230,11 +230,10 @@ namespace Wirelog
                 if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
                 {
                     var outputPort = new OutputPort();
-                    foundOutput.OutputPorts.Clear();
                     foundOutput.OutputPorts.Add(outputPort);
                     outputPort.Output = foundOutput;
-                    outputPort.InputWire = wire;
                     wire.OutputPorts.Add(outputPort);
+                    outputPort.InputWire = wire;
                 }
             }
         }

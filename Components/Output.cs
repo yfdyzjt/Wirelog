@@ -12,7 +12,7 @@ namespace Wirelog
         private static readonly Action<OutputPort>[] _outputActivators = new Action<OutputPort>[Enum.GetValues(typeof(OutputType)).Length];
         private static readonly Action<Output>[] _outputPostprocessors = new Action<Output>[Enum.GetValues(typeof(OutputType)).Length];
 
-        private static readonly Dictionary<Point16, object> _outputAdditionalData = [];
+        public static readonly Dictionary<Point16, object> AdditionalData = [];
 
         static Output()
         {

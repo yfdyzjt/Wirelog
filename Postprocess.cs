@@ -27,6 +27,7 @@ namespace Wirelog
 
         private static void PostprocessOutput()
         {
+            Output.AdditionalData.Clear();
             foreach (var output in _outputsFound.Values)
             {
                 Output.Postprocess(output);
@@ -51,10 +52,10 @@ namespace Wirelog
                 foreach (var inputPort in curWire.InputPorts)
                 {
                     var newWire = new Wire() { Type = curWire.Type };
-                    newWire.InputPorts.Add(inputPort);
                     inputPort.OutputWires.Add(newWire);
-                    curWire.InputPorts.Remove(inputPort);
+                    newWire.InputPorts.Add(inputPort);
                     inputPort.OutputWires.Remove(curWire);
+                    curWire.InputPorts.Remove(inputPort);
                     newWires.Add(newWire);
                 }
                 foreach (var lamp in curWire.Lamps)
@@ -80,8 +81,8 @@ namespace Wirelog
                         outputPort.Output.OutputPorts.Add(newOutputPort);
                     }
                     curWire.OutputPorts.Remove(outputPort);
-                    outputPort.Output.OutputPorts.Remove(outputPort);
                     outputPort.InputWire = null;
+                    outputPort.Output.OutputPorts.Remove(outputPort);
                     outputPort.Output = null;
                 }
                 _wires.AddRange(newWires);
