@@ -64,7 +64,9 @@ namespace Wirelog
                 TileID.Cannon when tile.TileFrameX >= 216 &&
                 tile.TileFrameX % 72 is 18 or 36 &&
                 tile.TileFrameY % 54 is 36 => OutputType.PortalGunStationShot,
-                TileID.SnowballLauncher => OutputType.SnowballLauncher,
+                TileID.SnowballLauncher when tile.TileFrameX % 54 is 0 => OutputType.SnowballLauncherLeft,
+                TileID.SnowballLauncher when tile.TileFrameX % 54 is 36 => OutputType.SnowballLauncherRight,
+                TileID.SnowballLauncher when tile.TileFrameX % 54 is 18 => OutputType.SnowballLauncherShot,
                 TileID.Campfire => OutputType.Campfires,
                 TileID.ActiveStoneBlock or
                 TileID.InactiveStoneBlock => OutputType.ActiveStoneBlocks,
@@ -138,7 +140,6 @@ namespace Wirelog
             OutputType.Lampposts => (1, 6),
             OutputType.TallGates => (1, 5),
             OutputType.SillyBalloonMachine or
-            OutputType.SnowballLauncher or
             OutputType.Chandeliers or
             OutputType.PartyMonolith => (3, 3),
             OutputType.Fireplace or
@@ -151,6 +152,9 @@ namespace Wirelog
             OutputType.Monoliths or
             OutputType.Statues => (2, 3),
             OutputType.Teleporter => (3, 1),
+            OutputType.SnowballLauncherRight or
+            OutputType.SnowballLauncherLeft or
+            OutputType.SnowballLauncherShot or
             OutputType.CannonsRight or
             OutputType.CannonsLeft or
             OutputType.ClosedDoors or
@@ -194,7 +198,9 @@ namespace Wirelog
         CannonsShot,
         PortalGunStationShot,
         PortalGunStationChange,
-        SnowballLauncher,
+        SnowballLauncherLeft,
+        SnowballLauncherRight,
+        SnowballLauncherShot,
         Campfires,
         ActiveStoneBlocks,
         TrapdoorOpen,
