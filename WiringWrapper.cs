@@ -12,6 +12,8 @@ namespace Wirelog
         private static int _numMechs;
         private static int[] _mechTime;
 
+        public static int CurrentUser = 255;
+
         public static void Initialize()
         {
             _mechX = new int[1000];
@@ -26,9 +28,22 @@ namespace Wirelog
             _mechTime = null;
         }
 
+        public static void SetCurrentUser(int plr = -1)
+        {
+            if (plr < 0 || plr > 255)
+            {
+                plr = 255;
+            }
+            if (Main.netMode == NetmodeID.SinglePlayer)
+            {
+                plr = Main.myPlayer;
+            }
+            CurrentUser = plr;
+        }
+
         public static void UpdateMech()
         {
-            Wiring.SetCurrentUser(-1);
+            SetCurrentUser();
             for (var i = _numMechs - 1; i >= 0; i--)
             {
                 _mechTime[i]--;

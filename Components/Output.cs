@@ -54,7 +54,16 @@ namespace Wirelog
                 TileID.Moondial => OutputType.SunAndMoondial,
                 TileID.AnnouncementBox => OutputType.AnnouncementBox,
                 TileID.Fireplace => OutputType.Fireplace,
-                TileID.Cannon => OutputType.Cannons,
+                TileID.Cannon when tile.TileFrameX % 72 is 0 => OutputType.CannonsLeft,
+                TileID.Cannon when tile.TileFrameX % 72 is 54 => OutputType.CannonsRight,
+                TileID.Cannon when tile.TileFrameX < 216 &&
+                tile.TileFrameX % 72 is 18 or 36 => OutputType.CannonsShot,
+                TileID.Cannon when tile.TileFrameX >= 216 &&
+                tile.TileFrameX % 72 is 18 or 36 &&
+                tile.TileFrameY % 54 is 0 or 18 => OutputType.PortalGunStationChange,
+                TileID.Cannon when tile.TileFrameX >= 216 &&
+                tile.TileFrameX % 72 is 18 or 36 &&
+                tile.TileFrameY % 54 is 36 => OutputType.PortalGunStationShot,
                 TileID.SnowballLauncher => OutputType.SnowballLauncher,
                 TileID.Campfire => OutputType.Campfires,
                 TileID.ActiveStoneBlock or
@@ -128,7 +137,6 @@ namespace Wirelog
         {
             OutputType.Lampposts => (1, 6),
             OutputType.TallGates => (1, 5),
-            OutputType.Cannons => (4, 3),
             OutputType.SillyBalloonMachine or
             OutputType.SnowballLauncher or
             OutputType.Chandeliers or
@@ -136,14 +144,18 @@ namespace Wirelog
             OutputType.Fireplace or
             OutputType.Campfires or
             OutputType.BubbleMachine => (3, 2),
+            OutputType.CannonsShot or
             OutputType.SunAndMoondial or
             OutputType.OpenDoors or
             OutputType.WaterFountain or
             OutputType.Monoliths or
             OutputType.Statues => (2, 3),
             OutputType.Teleporter => (3, 1),
+            OutputType.CannonsRight or
+            OutputType.CannonsLeft or
             OutputType.ClosedDoors or
             OutputType.Lamps => (1, 3),
+            OutputType.PortalGunStationChange or
             OutputType.Chimney or
             OutputType.Detonator or
             OutputType.AnnouncementBox or
@@ -154,6 +166,7 @@ namespace Wirelog
             OutputType.VolcanoLarge or
             OutputType.MusicBoxes or
             OutputType.Pumps => (2, 2),
+            OutputType.PortalGunStationShot or
             OutputType.TrapdoorClosed or
             OutputType.GeyserTrap => (2, 1),
             OutputType.Fireworks or
@@ -176,7 +189,11 @@ namespace Wirelog
         SunAndMoondial,
         AnnouncementBox,
         Fireplace,
-        Cannons,
+        CannonsLeft,
+        CannonsRight,
+        CannonsShot,
+        PortalGunStationShot,
+        PortalGunStationChange,
         SnowballLauncher,
         Campfires,
         ActiveStoneBlocks,
