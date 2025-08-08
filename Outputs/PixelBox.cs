@@ -8,7 +8,6 @@ namespace Wirelog.Outputs
 
         public static void Postprocess(Output output)
         {
-
         }
     }
 }

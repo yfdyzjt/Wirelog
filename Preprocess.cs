@@ -146,7 +146,7 @@ namespace Wirelog
             if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wireType))) return;
 
             visitedWires.Add((curPos, wireType));
-            TraceComponents(wire, curPos, level, visitedWires);
+            TraceComponents(wire, curPos, prevPos, level);
 
             if (JunctionBox.TryGetType(tile, out var junctionBoxType))
             {
@@ -183,7 +183,7 @@ namespace Wirelog
             }
         }
 
-        private static void TraceComponents(Wire wire, Point16 curPos, int level, HashSet<(Point16, WireType)> visitedWires)
+        private static void TraceComponents(Wire wire, Point16 curPos, Point16 prevPos, int level)
         {
             if (_lampsFound.TryGetValue(curPos, out var foundLamp))
             {
@@ -281,184 +281,5 @@ namespace Wirelog
             }
             return outLamps.Count != 0;
         }
-
-        /*
-        private static void ConnectComponents()
-        {
-            int i = 0;
-            var visitedWires = new HashSet<(Point16, WireType)>();
-            foreach (var inputEntry in _inputsFound)
-            {
-                if (i % Math.Max(1, _inputsFound.Count / 100) == 0)
-                    Main.statusText = $"connect components {i++ * 1f / _inputsFound.Count:P1}";
-                TraceSource(inputEntry.Key, visitedWires);
-            }
-        }
-
-        private static void TraceSource(Point16 startPos, HashSet<(Point16, WireType)> visitedWires)
-        {
-            foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
-            {
-                if (Wire.HasWire(Main.tile[startPos], wireType))
-                {
-                    if (!visitedWires.Contains((startPos, wireType)))
-                    {
-                        var wire = new Wire() { Type = wireType };
-                        _wires.Add(wire);
-                        TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
-                    }
-                }
-            }
-        }
-
-        private static void TraceWire(Wire wire, Point16 curPos, Point16 prevPos, WireType wireType, int level, HashSet<(Point16, WireType)> visitedWires)
-        {
-            if (!WorldGen.InWorld(curPos.X, curPos.Y, 1)) return;
-
-            Tile tile = Main.tile[curPos];
-
-            if (!Wire.HasWire(tile, wire.Type)) return;
-            if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wireType))) return;
-
-            visitedWires.Add((curPos, wireType));
-            TraceComponents(wire, curPos, level, visitedWires);
-
-            if (JunctionBox.TryGetType(tile, out var junctionBoxType))
-            {
-                int dX = 0, dY = 0;
-                switch (junctionBoxType)
-                {
-                    case JunctionBoxType.UpDown:
-                        dX = (curPos.X - prevPos.X);
-                        dY = (curPos.Y - prevPos.Y);
-                        break;
-                    case JunctionBoxType.UpLeft:
-                        dX = -(curPos.Y - prevPos.Y);
-                        dY = -(curPos.X - prevPos.X);
-                        break;
-                    case JunctionBoxType.UpRight:
-                        dX = (curPos.Y - prevPos.Y);
-                        dY = (curPos.X - prevPos.X);
-                        break;
-                }
-                var newPos = new Point16(curPos.X + dX, curPos.Y + dY);
-                TraceWire(wire, newPos, curPos, wireType, level + 1, visitedWires);
-            }
-            else
-            {
-                bool prevJunction = JunctionBox.TryGetType(Main.tile[prevPos], out _);
-                foreach (var (dX, dY) in new (int, int)[] { (1, 0), (0, 1), (-1, 0), (0, -1) })
-                {
-                    var newPos = new Point16(curPos.X + dX, curPos.Y + dY);
-                    if (!(prevJunction && prevPos == newPos))
-                    {
-                        TraceWire(wire, newPos, curPos, wireType, level + 1, visitedWires);
-                    }
-                }
-            }
-        }
-
-        private static void TraceComponents(Wire wire, Point16 curPos, int level, HashSet<(Point16, WireType)> visitedWires)
-        {
-            if (_lampsFound.TryGetValue(curPos, out var foundLamp))
-            {
-                if (TraceGate(foundLamp, out var foundGate))
-                {
-                    foundLamp.InputWires.Add(wire);
-                    wire.Lamps.Add(foundLamp);
-
-                    TraceSource(foundGate.Pos, visitedWires);
-                }
-                else
-                {
-                    _lampsFound.Remove(curPos);
-                }
-            }
-            else if (_gatesFound.TryGetValue(curPos, out var foundGate))
-            {
-                if (TraceLamp(foundGate, out var foundLamps))
-                {
-                    foundGate.OutputWires.Add(wire);
-                    wire.Gates.Add(foundGate);
-
-                    foreach (var lamp in foundLamps)
-                    {
-                        lamp.OutputGate = foundGate;
-                        foundGate.InputLamps.Add(lamp);
-                    }
-                }
-                else
-                {
-                    _gatesFound.Remove(curPos);
-                }
-            }
-            else if (_inputsFound.TryGetValue(curPos, out var foundInput))
-            {
-                if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
-                {
-                    foundInput.InputPort ??= new InputPort();
-                    foundInput.InputPort.Inputs.Add(foundInput);
-                    foundInput.InputPort.OutputWires.Add(wire);
-                    wire.InputPorts.Add(foundInput.InputPort);
-                }
-            }
-            else if (_outputsFound.TryGetValue(curPos, out var foundOutput))
-            {
-                if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
-                {
-                    var outputPort = new OutputPort();
-                    foundOutput.OutputPorts.Clear();
-                    foundOutput.OutputPorts.Add(outputPort);
-                    outputPort.Output = foundOutput;
-                    outputPort.InputWire = wire;
-                    wire.OutputPorts.Add(outputPort);
-                }
-            }
-        }
-
-        private static bool TraceGate(Lamp lamp, out Gate outGate)
-        {
-            if (lamp.OutputGate == null)
-            {
-                for (int y = 1; ; y++)
-                {
-                    var curPos = new Point16(lamp.Pos.X, lamp.Pos.Y + y);
-                    if (_gatesFound.TryGetValue(curPos, out var gate))
-                    {
-                        outGate = gate;
-                        return true;
-                    }
-                    else if (!_lampsFound.ContainsKey(curPos))
-                    {
-                        outGate = null;
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                outGate = lamp.OutputGate;
-                return true;
-            }
-        }
-
-        private static bool TraceLamp(Gate gate, out List<Lamp> outLamps)
-        {
-            outLamps = [];
-            for (int y = -1; ; y--)
-            {
-                var curPos = new Point16(gate.Pos.X, gate.Pos.Y + y);
-                if (_lampsFound.TryGetValue(curPos, out var lamp))
-                {
-                    outLamps.Add(lamp);
-                }
-                else
-                {
-                    break;
-                }
-            }
-            return outLamps.Count != 0;
-        }
-        */
     }
 }
