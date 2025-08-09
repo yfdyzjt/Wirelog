@@ -65,7 +65,7 @@ void set_input_bit(T& in, int input_idx)
 {
 	if constexpr (std::is_integral_v<T>)
 	{
-		in = (1U << input_idx);
+		in = (1ULL << input_idx);
 	}
 	else
 	{
