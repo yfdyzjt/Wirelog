@@ -36,33 +36,6 @@ namespace Wirelog.Outputs
                 }
             }
 
-            void TraceSource(Point16 nextPos, Point16 centerPos,
-                    HashSet<Gate> gateSet, HashSet<InputPort> inputSet,
-                    Wire wire)
-            {
-                if (!Wire.HasWire(Main.tile[nextPos], wire.Type)) return;
-
-                var visitedWires = new HashSet<(Point16, WireType)>();
-                Converter.PublicTraceWire(wire, nextPos, centerPos, 0, visitedWires,
-                    (wire, curPos, level) =>
-                    {
-                        if (Converter.GatesFound.TryGetValue(curPos, out var gate))
-                        {
-                            if (linkGates.Contains(gate))
-                            {
-                                gateSet.Add(gate);
-                            }
-                        }
-                        else if (Converter.InputsFound.TryGetValue(curPos, out var input))
-                        {
-                            if (linkInputPorts.Contains(input.InputPort))
-                            {
-                                inputSet.Add(input.InputPort);
-                            }
-                        }
-                    });
-            }
-
             foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
             {
                 if (!Wire.HasWire(Main.tile[output.Pos], wireType)) continue;
@@ -70,34 +43,10 @@ namespace Wirelog.Outputs
                 var wire = new Wire() { Type = wireType };
                 var centerPos = output.Pos;
 
-                TraceSource(new Point16(centerPos.X - 1, centerPos.Y), centerPos, leftRightGates, leftRightInputPorts, wire);
-                TraceSource(new Point16(centerPos.X + 1, centerPos.Y), centerPos, leftRightGates, leftRightInputPorts, wire);
-                TraceSource(new Point16(centerPos.X, centerPos.Y - 1), centerPos, upDownGates, upDownInputPorts, wire);
-                TraceSource(new Point16(centerPos.X, centerPos.Y + 1), centerPos, upDownGates, upDownInputPorts, wire);
-            }
-
-            void AddNewOutputPort(IEnumerable<OutputPort> outputPorts)
-            {
-                var firstOutputPort = outputPorts.First();
-                var newOutputPort = new OutputPort()
-                {
-                    InputWire = firstOutputPort.InputWire,
-                    Output = firstOutputPort.Output,
-                };
-                newOutputPort.InputWire.OutputPorts.Add(newOutputPort);
-                newOutputPort.Output.OutputPorts.Add(newOutputPort);
-                RemoveOutputPort(outputPorts);
-            }
-
-            void RemoveOutputPort(IEnumerable<OutputPort> outputPorts)
-            {
-                foreach (var outputPort in outputPorts)
-                {
-                    outputPort.Output.OutputPorts.Remove(outputPort);
-                    outputPort.Output = null;
-                    outputPort.InputWire.OutputPorts.Remove(outputPort);
-                    outputPort.InputWire = null;
-                }
+                TraceSource(new Point16(centerPos.X - 1, centerPos.Y), centerPos, leftRightGates, leftRightInputPorts, wire, linkGates, linkInputPorts);
+                TraceSource(new Point16(centerPos.X + 1, centerPos.Y), centerPos, leftRightGates, leftRightInputPorts, wire, linkGates, linkInputPorts);
+                TraceSource(new Point16(centerPos.X, centerPos.Y - 1), centerPos, upDownGates, upDownInputPorts, wire, linkGates, linkInputPorts);
+                TraceSource(new Point16(centerPos.X, centerPos.Y + 1), centerPos, upDownGates, upDownInputPorts, wire, linkGates, linkInputPorts);
             }
 
             var doubleDirGates = leftRightGates.Intersect(upDownGates).ToHashSet();
@@ -129,6 +78,62 @@ namespace Wirelog.Outputs
                 outputPort.InputWire.InputPorts.Contains(inputPort)).ToHashSet();
                 RemoveOutputPort(outputPorts);
             }
+        }
+
+        private static void TraceSource(
+            Point16 nextPos, 
+            Point16 centerPos,
+            HashSet<Gate> gateSet, 
+            HashSet<InputPort> inputSet,
+            Wire wire, 
+            HashSet<Gate> linkGates, 
+            HashSet<InputPort> linkInputPorts)
+        {
+            if (!Wire.HasWire(Main.tile[nextPos], wire.Type)) return;
+
+            var visitedWires = new HashSet<(Point16, WireType)>();
+            Converter.PublicTraceWire(wire, nextPos, centerPos, 0, visitedWires,
+                (wire, curPos, level) =>
+                {
+                    if (Converter.GatesFound.TryGetValue(curPos, out var gate))
+                    {
+                        if (linkGates.Contains(gate))
+                        {
+                            gateSet.Add(gate);
+                        }
+                    }
+                    else if (Converter.InputsFound.TryGetValue(curPos, out var input))
+                    {
+                        if (linkInputPorts.Contains(input.InputPort))
+                        {
+                            inputSet.Add(input.InputPort);
+                        }
+                    }
+                });
+        }
+
+        private static void RemoveOutputPort(IEnumerable<OutputPort> outputPorts)
+        {
+            foreach (var outputPort in outputPorts)
+            {
+                outputPort.Output.OutputPorts.Remove(outputPort);
+                outputPort.Output = null;
+                outputPort.InputWire.OutputPorts.Remove(outputPort);
+                outputPort.InputWire = null;
+            }
+        }
+
+        private static void AddNewOutputPort(IEnumerable<OutputPort> outputPorts)
+        {
+            var firstOutputPort = outputPorts.First();
+            var newOutputPort = new OutputPort()
+            {
+                InputWire = firstOutputPort.InputWire,
+                Output = firstOutputPort.Output,
+            };
+            newOutputPort.InputWire.OutputPorts.Add(newOutputPort);
+            newOutputPort.Output.OutputPorts.Add(newOutputPort);
+            RemoveOutputPort(outputPorts);
         }
     }
 }
