@@ -28,7 +28,7 @@ namespace Wirelog
         private static void PostprocessOutput()
         {
             Output.AdditionalData.Clear();
-            foreach (var output in _outputsFound.Values)
+            foreach (var output in _outputsFound.Values.ToHashSet())
             {
                 Output.Postprocess(output);
             }

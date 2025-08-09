@@ -13,7 +13,7 @@ namespace Wirelog
             WorldFile.OnWorldLoad += VerilogSimulator.Start;
             On_WorldGen.SaveAndQuit += WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser += Wiring_SetCurrentUser;
-            On_Wiring.Initialize += Wiring_Initialize;
+            On_Wiring.XferWater += Wiring_XferWater;
             On_Wiring.UpdateMech += Wiring_UpdateMech;
             On_Wiring.CheckMech += Wiring_CheckMech;
             On_Wiring.HitSwitch += Wiring_HitSwitch;
@@ -25,14 +25,14 @@ namespace Wirelog
             orig(callback);
         }
 
-        public static void Wiring_SetCurrentUser(Terraria.On_Wiring.orig_SetCurrentUser orig, int plr)
+        private static void Wiring_SetCurrentUser(On_Wiring.orig_SetCurrentUser orig, int plr)
         {
             WiringWrapper.SetCurrentUser(plr);
         }
 
-        private void Wiring_Initialize(On_Wiring.orig_Initialize orig)
+        private void Wiring_XferWater(On_Wiring.orig_XferWater orig)
         {
-            WiringWrapper.Initialize();
+            WiringWrapper.XferWater();
         }
 
         private void Wiring_UpdateMech(On_Wiring.orig_UpdateMech orig)
@@ -56,7 +56,7 @@ namespace Wirelog
             WorldFile.OnWorldLoad -= VerilogSimulator.Start;
             On_WorldGen.SaveAndQuit -= WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser -= Wiring_SetCurrentUser;
-            On_Wiring.Initialize -= Wiring_Initialize;
+            On_Wiring.XferWater -= Wiring_XferWater;
             On_Wiring.UpdateMech -= Wiring_UpdateMech;
             On_Wiring.CheckMech -= Wiring_CheckMech;
             On_Wiring.HitSwitch -= Wiring_HitSwitch;

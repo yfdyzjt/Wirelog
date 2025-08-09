@@ -1,32 +1,24 @@
 ﻿using System;
+using System.Collections.Generic;
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
+using Terraria.ModLoader;
 
 namespace Wirelog
 {
     internal class WiringWrapper
     {
-        private static int[] _mechX;
-        private static int[] _mechY;
+        private static int[] _mechX = new int[1000];
+        private static int[] _mechY = new int[1000];
         private static int _numMechs;
-        private static int[] _mechTime;
+        private static int[] _mechTime = new int[1000];
 
-        public static int CurrentUser = 255;
-
-        public static void Initialize()
-        {
-            _mechX = new int[1000];
-            _mechY = new int[1000];
-            _mechTime = new int[1000];
-        }
-
-        public static void Unload()
-        {
-            _mechX = null;
-            _mechY = null;
-            _mechTime = null;
-        }
+        public static int NumInPump => InPump.Count;
+        public static int NumOutPump => OutPump.Count;
+        public static HashSet<Point16> InPump { get; } = [];
+        public static HashSet<Point16> OutPump { get; } = [];
+        public static int CurrentUser { get; set; } = 255;
 
         public static void SetCurrentUser(int plr = -1)
         {
@@ -39,6 +31,58 @@ namespace Wirelog
                 plr = Main.myPlayer;
             }
             CurrentUser = plr;
+        }
+
+        public static void XferWater()
+        {
+            foreach (var inPump in InPump)
+            {
+                var num = inPump.X;
+                var num2 = inPump.Y;
+                var liquidAmount = Main.tile[num, num2].LiquidAmount;
+                if (liquidAmount > 0)
+                {
+                    var liquidType = Main.tile[num, num2].LiquidType;
+                    foreach (var outPump in OutPump)
+                    {
+                        var num3 = outPump.X;
+                        var num4 = outPump.Y;
+                        var liquidAmount2 = Main.tile[num3, num4].LiquidAmount;
+                        if (liquidAmount2 < 255)
+                        {
+                            var liquidType2 = Main.tile[num3, num4].LiquidType;
+                            if (liquidAmount2 == 0)
+                            {
+                                liquidType2 = liquidType;
+                            }
+                            if (liquidType2 == liquidType)
+                            {
+                                var liquidAmount3 = liquidAmount;
+                                if (liquidAmount3 + liquidAmount2 > 255)
+                                {
+                                    liquidAmount3 = (byte)(255 - liquidAmount2);
+                                }
+                                var tile = Main.tile[num3, num4];
+                                var tile2 = Main.tile[num, num2];
+
+                                tile.LiquidAmount += liquidAmount3;
+                                tile2.LiquidAmount -= liquidAmount3;
+
+                                tile.LiquidType = liquidType;
+
+                                WorldGen.SquareTileFrame(num3, num4, true);
+                                if (tile2.LiquidAmount == 0)
+                                {
+                                    tile2.LiquidType = LiquidID.Water;
+                                    WorldGen.SquareTileFrame(num, num2, true);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    WorldGen.SquareTileFrame(num, num2, true);
+                }
+            }
         }
 
         public static void UpdateMech()

@@ -8,7 +8,17 @@ namespace Wirelog.Outputs
 
         public static void Postprocess(Output output)
         {
+            foreach(var outputPort in output.OutputPorts)
+            {
+                foreach(var inputPort in outputPort.InputWire.InputPorts)
+                {
 
+                }
+                foreach(var gate in outputPort.InputWire.Gates)
+                {
+
+                }
+            }
         }
     }
 }
