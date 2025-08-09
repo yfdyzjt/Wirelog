@@ -36,7 +36,7 @@ namespace Wirelog
 
         private static void CopyMultiInputWiresAndOutputPorts()
         {
-            var multiInputWires = _wires.Where(w => w.InputPorts.Count + w.Gates.Count > 1).ToList();
+            var multiInputWires = _wires.Where(w => w.InputPorts.Count + w.Gates.Count > 1).ToHashSet();
             foreach (var curWire in multiInputWires)
             {
                 var newWires = new List<Wire>();
@@ -171,7 +171,7 @@ namespace Wirelog
 
         private static bool PruneUnusedInputs()
         {
-            var inputsToRemove = _inputsFound.Where(posInput => posInput.Value.InputPort == null || posInput.Value.InputPort.OutputWires.Count == 0).ToList();
+            var inputsToRemove = _inputsFound.Where(posInput => posInput.Value.InputPort == null || posInput.Value.InputPort.OutputWires.Count == 0).ToHashSet();
             if (inputsToRemove.Count == 0) return false;
             foreach (var posInput in inputsToRemove)
             {
@@ -184,7 +184,7 @@ namespace Wirelog
 
         private static bool PruneUnusedOutputs()
         {
-            var outputsToRemove = _outputsFound.Where(posOutput => posOutput.Value.OutputPorts.Count == 0 || posOutput.Value.OutputPorts.Any(outputPort => outputPort.InputWire == null)).ToList();
+            var outputsToRemove = _outputsFound.Where(posOutput => posOutput.Value.OutputPorts.Count == 0 || posOutput.Value.OutputPorts.Any(outputPort => outputPort.InputWire == null)).ToHashSet();
             if (outputsToRemove.Count == 0) return false;
             foreach (var posOutput in outputsToRemove)
             {
@@ -200,7 +200,7 @@ namespace Wirelog
 
         private static bool PruneUnusedGates()
         {
-            var gatesToRemove = _gatesFound.Values.Where(gate => gate.InputLamps.Count == 0 || gate.OutputWires.Count == 0).ToList();
+            var gatesToRemove = _gatesFound.Values.Where(gate => gate.InputLamps.Count == 0 || gate.OutputWires.Count == 0).ToHashSet();
             if (gatesToRemove.Count == 0) return false;
             foreach (var gate in gatesToRemove)
             {
@@ -215,7 +215,7 @@ namespace Wirelog
 
         private static bool PruneUnusedLamps()
         {
-            var lampsToRemove = _lampsFound.Values.Where(lamp => lamp.OutputGate == null).ToList();
+            var lampsToRemove = _lampsFound.Values.Where(lamp => lamp.OutputGate == null).ToHashSet();
             if (lampsToRemove.Count == 0) return false;
             foreach (var lamp in lampsToRemove)
             {
@@ -228,7 +228,7 @@ namespace Wirelog
 
         private static bool PruneUnusedWires()
         {
-            var wiresToRemove = _wires.Where(wire => wire.OutputPorts.Count == 0 && wire.Lamps.Count == 0).ToList();
+            var wiresToRemove = _wires.Where(wire => wire.OutputPorts.Count == 0 && wire.Lamps.Count == 0).ToHashSet();
             if (wiresToRemove.Count == 0) return false;
             foreach (var wire in wiresToRemove)
             {

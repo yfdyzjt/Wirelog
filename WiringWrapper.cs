@@ -37,50 +37,48 @@ namespace Wirelog
         {
             foreach (var inPump in InPump)
             {
-                var num = inPump.X;
-                var num2 = inPump.Y;
-                var liquidAmount = Main.tile[num, num2].LiquidAmount;
-                if (liquidAmount > 0)
+                var inPumpX = inPump.X;
+                var inPumpY = inPump.Y;
+                var inPumpTile = Main.tile[inPumpX, inPumpY];
+                if (inPumpTile.LiquidAmount > 0)
                 {
-                    var liquidType = Main.tile[num, num2].LiquidType;
+                    var inPumpLiquidType = Main.tile[inPumpX, inPumpY].LiquidType;
                     foreach (var outPump in OutPump)
                     {
-                        var num3 = outPump.X;
-                        var num4 = outPump.Y;
-                        var liquidAmount2 = Main.tile[num3, num4].LiquidAmount;
-                        if (liquidAmount2 < 255)
+                        var outPumpX = outPump.X;
+                        var outPumpY = outPump.Y;
+                        var outPumpTile = Main.tile[outPumpX, outPumpY];
+                        if (outPumpTile.LiquidAmount < 255)
                         {
-                            var liquidType2 = Main.tile[num3, num4].LiquidType;
-                            if (liquidAmount2 == 0)
+                            var outPumpLiquidType = Main.tile[outPumpX, outPumpY].LiquidType;
+                            if (outPumpTile.LiquidAmount == 0)
                             {
-                                liquidType2 = liquidType;
+                                outPumpLiquidType = inPumpLiquidType;
                             }
-                            if (liquidType2 == liquidType)
+                            if (outPumpLiquidType == inPumpLiquidType)
                             {
-                                var liquidAmount3 = liquidAmount;
-                                if (liquidAmount3 + liquidAmount2 > 255)
+                                var moveLiquidAmount = inPumpTile.LiquidAmount;
+                                if (moveLiquidAmount + outPumpTile.LiquidAmount > 255)
                                 {
-                                    liquidAmount3 = (byte)(255 - liquidAmount2);
+                                    moveLiquidAmount = (byte)(255 - outPumpTile.LiquidAmount);
                                 }
-                                var tile = Main.tile[num3, num4];
-                                var tile2 = Main.tile[num, num2];
 
-                                tile.LiquidAmount += liquidAmount3;
-                                tile2.LiquidAmount -= liquidAmount3;
+                                outPumpTile.LiquidAmount += moveLiquidAmount;
+                                inPumpTile.LiquidAmount -= moveLiquidAmount;
 
-                                tile.LiquidType = liquidType;
+                                outPumpTile.LiquidType = inPumpLiquidType;
 
-                                WorldGen.SquareTileFrame(num3, num4, true);
-                                if (tile2.LiquidAmount == 0)
+                                WorldGen.SquareTileFrame(outPumpX, outPumpY, true);
+                                if (inPumpTile.LiquidAmount == 0)
                                 {
-                                    tile2.LiquidType = LiquidID.Water;
-                                    WorldGen.SquareTileFrame(num, num2, true);
+                                    inPumpTile.LiquidType = LiquidID.Water;
+                                    WorldGen.SquareTileFrame(inPumpX, inPumpY, true);
                                     break;
                                 }
                             }
                         }
                     }
-                    WorldGen.SquareTileFrame(num, num2, true);
+                    WorldGen.SquareTileFrame(inPumpX, inPumpY, true);
                 }
             }
         }
