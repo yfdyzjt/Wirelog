@@ -19,6 +19,7 @@ namespace Wirelog
 
         public static Dictionary<Point16, Input> InputsFound => _inputsFound;
         public static Dictionary<Point16, Gate> GatesFound => _gatesFound;
+        public static Dictionary<Point16, Output> OutputsFound => _outputsFound;
         public static Dictionary<int, OutputPort> OutputsPortFound => _outputsPortFound;
 
         public static void Convert()

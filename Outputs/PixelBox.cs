@@ -38,7 +38,7 @@ namespace Wirelog.Outputs
 
             foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
             {
-                if (!Wire.HasWire(Main.tile[output.Pos], wireType)) continue;
+                if (!Wire.HasWire(output.Pos, wireType)) continue;
 
                 var wire = new Wire() { Type = wireType };
                 var centerPos = output.Pos;
@@ -89,7 +89,7 @@ namespace Wirelog.Outputs
             HashSet<Gate> linkGates, 
             HashSet<InputPort> linkInputPorts)
         {
-            if (!Wire.HasWire(Main.tile[nextPos], wire.Type)) return;
+            if (!Wire.HasWire(nextPos, wire.Type)) return;
 
             var visitedWires = new HashSet<(Point16, WireType)>();
             Converter.PublicTraceWire(wire, nextPos, centerPos, 0, visitedWires,

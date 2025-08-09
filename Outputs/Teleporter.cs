@@ -1,24 +1,110 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Terraria;
+using Terraria.DataStructures;
+
 namespace Wirelog.Outputs
 {
     public static class Teleporter
     {
         public static void Activate(OutputPort outputPort)
         {
+            var curPos = outputPort.Output.Pos;
+            if (Output.AdditionalData.TryGetValue(curPos, out var obj))
+            {
+                var teleporterMap = (Dictionary<OutputPort, Point16>)obj;
+                if (teleporterMap.TryGetValue(outputPort, out var nextPos))
+                {
+                    Main.NewText($"{curPos}, {nextPos}");
+                }
+            }
         }
 
         public static void Postprocess(Output output)
         {
-            foreach(var outputPort in output.OutputPorts)
+            var teleporterMap = new Dictionary<OutputPort, Point16>();
+
+            var inputLinks = new Dictionary<(Point16, WireType), OutputPort>();
+            var visitedWires = new HashSet<(Point16, WireType)>();
+            var (sizeX, sizeY) = Output.GetSize(output.Type);
+
+            for (var x = 0; x < sizeX; x++)
             {
-                foreach(var inputPort in outputPort.InputWire.InputPorts)
+                for (var y = 0; y < sizeY; y++)
                 {
+                    var startPos = new Point16(output.Pos.X + x, output.Pos.Y + y);
+                    foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
+                    {
+                        if (!Wire.HasWire(startPos, wireType)) continue;
 
-                }
-                foreach(var gate in outputPort.InputWire.Gates)
-                {
-
+                        var wire = new Wire() { Type = wireType };
+                        Converter.PublicTraceWire(wire, startPos, startPos, 0, visitedWires,
+                            (wire, pos, level) =>
+                            {
+                                OutputPort outputPort = null;
+                                if (Converter.InputsFound.TryGetValue(pos, out var input))
+                                {
+                                    outputPort = output.OutputPorts.Where(o =>
+                                    o.InputWire.InputPorts.First().Inputs.Any(i => i == input)).First();
+                                }
+                                else if (Converter.GatesFound.TryGetValue(pos, out var gate))
+                                {
+                                    outputPort = output.OutputPorts.Where(o =>
+                                    o.InputWire.Gates.First() == gate).First();
+                                }
+                                if (outputPort != null)
+                                {
+                                    inputLinks.Add((pos, wire.Type), outputPort);
+                                }
+                            });
+                    }
                 }
             }
+
+            foreach (var inputLink in inputLinks)
+            {
+                var outputPort = inputLink.Value;
+                var startPos = inputLink.Key.Item1;
+                var wireType = inputLink.Key.Item2;
+                int minLevel = int.MaxValue;
+                int maxLevel = 0;
+                Output minOutput = null;
+                Output maxOutput = null;
+                var wire = new Wire() { Type = wireType };
+                visitedWires.Clear();
+                Converter.PublicTraceWire(wire, startPos, startPos, 0, visitedWires,
+                            (wire, pos, level) =>
+                            {
+                                if (!Converter.OutputsFound.TryGetValue(pos, out var foundOutput)) return;
+                                if (foundOutput.Type != output.Type) return;
+
+                                if (level < minLevel)
+                                {
+                                    minOutput = foundOutput;
+                                    minLevel = level;
+                                }
+                                if (level > maxLevel)
+                                {
+                                    maxOutput = foundOutput;
+                                    maxLevel = level;
+                                }
+                            });
+
+                if (minOutput == output && maxOutput != output)
+                {
+                    teleporterMap.Add(outputPort, maxOutput.Pos);
+                }
+                else
+                {
+                    output.OutputPorts.Remove(outputPort);
+                    outputPort.Output = null;
+                    outputPort.InputWire.OutputPorts.Remove(outputPort);
+                    outputPort.InputWire = null;
+                }
+            }
+
+            Output.AdditionalData.Add(output.Pos, teleporterMap);
         }
     }
 }

@@ -1,4 +1,3 @@
-using ReLogic.Content;
 using System.Collections.Generic;
 using System.Linq;
 using Terraria;
@@ -15,7 +14,7 @@ namespace Wirelog.Outputs
             if (tile.TileType == TileID.OutletPump) return;
 
             var inletPump = outputPort;
-            if (Output.AdditionalData.TryGetValue(outputPort.Output.Pos, out var obj))
+            if (Output.AdditionalData.TryGetValue(inletPump.Output.Pos, out var obj))
             {
                 var pumpMap = (Dictionary<OutputPort, HashSet<OutputPort>>)obj;
                 if (pumpMap.TryGetValue(inletPump, out var outletPumps))

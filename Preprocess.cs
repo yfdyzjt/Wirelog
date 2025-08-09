@@ -135,7 +135,7 @@ namespace Wirelog
         {
             foreach (WireType wireType in Enum.GetValues(typeof(WireType)))
             {
-                if (Wire.HasWire(Main.tile[startPos], wireType) && !visitedWires.Contains((startPos, wireType)))
+                if (Wire.HasWire(startPos, wireType) && !visitedWires.Contains((startPos, wireType)))
                 {
                     var wire = new Wire() { Type = wireType };
                     TraceWire(wire, startPos, startPos, 0, visitedWires, TraceComponents);

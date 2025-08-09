@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Terraria;
+using Terraria.DataStructures;
 
 namespace Wirelog
 {
@@ -11,6 +12,11 @@ namespace Wirelog
         public HashSet<OutputPort> OutputPorts { get; } = [];
         public HashSet<Lamp> Lamps { get; } = [];
         public HashSet<Gate> Gates { get; } = [];
+
+        public static bool HasWire(Point16 pos, WireType wireType)
+        {
+            return HasWire(Main.tile[pos], wireType);
+        }
 
         public static bool HasWire(Tile tile)
         {
