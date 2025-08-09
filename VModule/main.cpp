@@ -55,8 +55,9 @@ void clear_input(T& in)
 	}
 	else
 	{
-		constexpr int nwords = sizeof(T) / sizeof(uint32_t);
-		VL_ZERO_W(nwords, static_cast<WDataOutP>(in));
+		std::memset(&in, 0, sizeof(T));
+		// constexpr int nwords = sizeof(T) / sizeof(uint32_t);
+		// VL_ZERO_W(nwords, static_cast<WDataOutP>(in));
 	}
 }
 
@@ -71,7 +72,7 @@ void set_input_bit(T& in, int input_idx)
 	{
 		const int word_index = input_idx / 32;
 		const int bit_in_word = input_idx % 32;
-		int words = sizeof(in) / sizeof(uint32_t);
+		constexpr int words = sizeof(in) / sizeof(uint32_t);
 		if (word_index < words)
 		{
 			in[word_index] = (1U << bit_in_word);
@@ -90,7 +91,7 @@ bool get_output_bit(const T& out, int bit_idx)
 	{
 		const int word_index = bit_idx / 32;
 		const int bit_in_word = bit_idx % 32;
-		int words = sizeof(out) / sizeof(uint32_t);
+		constexpr int words = sizeof(out) / sizeof(uint32_t);
 		if (word_index >= words)
 			return false;
 		else
