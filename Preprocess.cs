@@ -3,12 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using Terraria;
 using Terraria.DataStructures;
-using Wirelog;
 
 namespace Wirelog
 {
     public static partial class Converter
     {
+        public static void PublicTraceWire(
+            Wire wire,
+            Point16 curPos,
+            Point16 prevPos,
+            int level,
+            HashSet<(Point16, WireType)> visitedWires,
+            Action<Wire, Point16, int> traceComponents
+            ) => TraceWire(wire, curPos, prevPos, level, visitedWires, traceComponents);
+
         private static void Preprocess()
         {
             PreprocessComponents();
@@ -130,23 +138,30 @@ namespace Wirelog
                 if (Wire.HasWire(Main.tile[startPos], wireType) && !visitedWires.Contains((startPos, wireType)))
                 {
                     var wire = new Wire() { Type = wireType };
-                    TraceWire(wire, startPos, startPos, wireType, 0, visitedWires);
+                    TraceWire(wire, startPos, startPos, 0, visitedWires, TraceComponents);
                     _wires.Add(wire);
                 }
             }
         }
 
-        private static void TraceWire(Wire wire, Point16 curPos, Point16 prevPos, WireType wireType, int level, HashSet<(Point16, WireType)> visitedWires)
+        private static void TraceWire(
+            Wire wire,
+            Point16 curPos,
+            Point16 prevPos,
+            int level,
+            HashSet<(Point16, WireType)> visitedWires,
+            Action<Wire, Point16, int> traceComponents
+            )
         {
             if (!WorldGen.InWorld(curPos.X, curPos.Y, 1)) return;
 
             Tile tile = Main.tile[curPos];
 
             if (!Wire.HasWire(tile, wire.Type)) return;
-            if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wireType))) return;
+            if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((curPos, wire.Type))) return;
 
-            visitedWires.Add((curPos, wireType));
-            TraceComponents(wire, curPos, prevPos, level);
+            visitedWires.Add((curPos, wire.Type));
+            traceComponents(wire, curPos, level);
 
             if (JunctionBox.TryGetType(tile, out var junctionBoxType))
             {
@@ -167,7 +182,7 @@ namespace Wirelog
                         break;
                 }
                 var newPos = new Point16(curPos.X + dX, curPos.Y + dY);
-                TraceWire(wire, newPos, curPos, wireType, level + 1, visitedWires);
+                TraceWire(wire, newPos, curPos, level + 1, visitedWires, traceComponents);
             }
             else
             {
@@ -177,13 +192,13 @@ namespace Wirelog
                     var newPos = new Point16(curPos.X + dX, curPos.Y + dY);
                     if (!(prevJunction && prevPos == newPos))
                     {
-                        TraceWire(wire, newPos, curPos, wireType, level + 1, visitedWires);
+                        TraceWire(wire, newPos, curPos, level + 1, visitedWires, traceComponents);
                     }
                 }
             }
         }
 
-        private static void TraceComponents(Wire wire, Point16 curPos, Point16 prevPos, int level)
+        private static void TraceComponents(Wire wire, Point16 curPos, int level)
         {
             if (_lampsFound.TryGetValue(curPos, out var foundLamp))
             {

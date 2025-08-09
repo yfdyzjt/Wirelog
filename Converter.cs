@@ -17,8 +17,9 @@ namespace Wirelog
 
         private static readonly List<Wire> _wires = [];
 
-        public static Dictionary<Point16, Input> InputsFound { get; } = [];
-        public static Dictionary<int, OutputPort> OutputsPortFound { get; } = [];
+        public static Dictionary<Point16, Input> InputsFound => _inputsFound;
+        public static Dictionary<Point16, Gate> GatesFound => _gatesFound;
+        public static Dictionary<int, OutputPort> OutputsPortFound => _outputsPortFound;
 
         public static void Convert()
         {
@@ -32,9 +33,6 @@ namespace Wirelog
 
         private static void PreClear()
         {
-            InputsFound.Clear();
-            OutputsPortFound.Clear();
-
             _inputsFound.Clear();
             _outputsFound.Clear();
             _gatesFound.Clear();
@@ -46,9 +44,6 @@ namespace Wirelog
 
         private static void PostClear()
         {
-            InputsFound.AddRange(_inputsFound);
-            OutputsPortFound.AddRange(_outputsPortFound);
-
             foreach (var wire in _wires)
             {
                 wire.InputPorts.Clear();
@@ -74,13 +69,11 @@ namespace Wirelog
             {
                 outputPort.InputWire = null;
             }
-            _inputsFound.Clear();
             _outputsFound.Clear();
             _gatesFound.Clear();
             _lampsFound.Clear();
             _wires.Clear();
             _inputsPortFound.Clear();
-            _outputsPortFound.Clear();
         }
     }
 }
