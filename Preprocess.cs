@@ -153,10 +153,6 @@ namespace Wirelog
             Action<Wire, Point16, int> traceComponents
             )
         {
-            if(level>20000)
-            {
-
-            }
             if (!WorldGen.InWorld(curPos.X, curPos.Y, 1)) return;
 
             Tile tile = Main.tile[curPos];

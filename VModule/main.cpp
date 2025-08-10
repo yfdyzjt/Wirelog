@@ -175,8 +175,7 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 	}
 	else
 	{
-		std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles, " 
-			<< "duration: " << duration_us << " us." << std::endl;
+		std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles, duration: " << duration_us << " us." << std::endl;
 	}
 
 	std::vector<int32_t> output_idx;
