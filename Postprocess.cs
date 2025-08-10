@@ -95,22 +95,29 @@ namespace Wirelog
             HashSet<InputPort> inputPorts = _inputsFound.Values.Select(input => input.InputPort).ToHashSet();
             HashSet<OutputPort> outputPorts = _outputsFound.Values.SelectMany(output => output.OutputPorts).ToHashSet();
 
+            _inputPorts = new InputPort[inputPorts.Count];
+            _outputPorts = new OutputPort[outputPorts.Count];
+
             int wireId = 0;
             foreach (var wire in _wires)
             {
                 wire.Id = wireId++;
             }
             int inputId = 0;
+            foreach (var input in _inputsFound.Values)
+            {
+                InputsPortFound.Add(input.Pos, input.InputPort);
+            }
             foreach (var inputPort in inputPorts)
             {
                 inputPort.Id = inputId++;
-                _inputsPortFound.Add(inputPort.Id, inputPort);
+                _inputPorts[inputPort.Id] = inputPort;
             }
             int outputId = 0;
             foreach (var outputPort in outputPorts)
             {
                 outputPort.Id = outputId++;
-                _outputsPortFound.Add(outputPort.Id, outputPort);
+                _outputPorts[outputPort.Id] = outputPort;
             }
             int lampId = 0;
             foreach (var lamp in _lampsFound.Values)

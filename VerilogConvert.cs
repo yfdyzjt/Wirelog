@@ -17,14 +17,14 @@ namespace Wirelog
                     input wire clk,
                     input wire reset,
                     input wire logic_reset,
-                    input wire [{_inputsPortFound.Count - 1}:0] in,
+                    input wire [{_inputPorts.Length - 1}:0] in,
                     output wire wiring_running,
-                    output wire [{_outputsPortFound.Count - 1}:0] out,
+                    output wire [{_outputPorts.Length - 1}:0] out,
                     output wire [31:0] in_width,
                     output wire [31:0] out_width
                 );
-                    assign in_width = {_inputsPortFound.Count};
-                    assign out_width = {_outputsPortFound.Count};
+                    assign in_width = {_inputPorts.Length};
+                    assign out_width = {_outputPorts.Length};
                 """);
 
             if (_wires.Count > 0) 
@@ -37,12 +37,12 @@ namespace Wirelog
                 sb.AppendLine($"    assign wiring_running = 0;");
 
             sb.AppendLine("    // input port module");
-            foreach (var inputPort in _inputsPortFound.Values)
+            foreach (var inputPort in _inputPorts)
             {
                 sb.AppendLine(GetInputPortMoudleString(inputPort));
             }
             sb.AppendLine("    // output port module");
-            foreach (var outputPort in _outputsPortFound.Values)
+            foreach (var outputPort in _outputPorts)
             {
                 sb.AppendLine(GetOutputPortMoudleString(outputPort));
             }

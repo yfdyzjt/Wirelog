@@ -1,6 +1,4 @@
-using MonoMod.Utils;
 using System.Collections.Generic;
-using Terraria;
 using Terraria.DataStructures;
 
 namespace Wirelog
@@ -12,15 +10,17 @@ namespace Wirelog
         private static readonly Dictionary<Point16, Input> _inputsFound = [];
         private static readonly Dictionary<Point16, Output> _outputsFound = [];
 
-        private static readonly Dictionary<int, InputPort> _inputsPortFound = [];
-        private static readonly Dictionary<int, OutputPort> _outputsPortFound = [];
+        private static InputPort[] _inputPorts;
+        private static OutputPort[] _outputPorts;
 
         private static readonly List<Wire> _wires = [];
 
         public static Dictionary<Point16, Input> InputsFound => _inputsFound;
         public static Dictionary<Point16, Gate> GatesFound => _gatesFound;
         public static Dictionary<Point16, Output> OutputsFound => _outputsFound;
-        public static Dictionary<int, OutputPort> OutputsPortFound => _outputsPortFound;
+
+        public static Dictionary<Point16, InputPort> InputsPortFound { get; } = [];
+        public static OutputPort[] OutputsPortFound => _outputPorts;
 
         public static void Convert()
         {
@@ -39,8 +39,9 @@ namespace Wirelog
             _gatesFound.Clear();
             _lampsFound.Clear();
             _wires.Clear();
-            _inputsPortFound.Clear();
-            _outputsPortFound.Clear();
+            _inputPorts = null;
+            _outputPorts = null;
+            InputsPortFound.Clear();
         }
 
         private static void PostClear()
@@ -62,11 +63,11 @@ namespace Wirelog
                 gate.InputLamps.Clear();
                 gate.OutputWires.Clear();
             }
-            foreach (var inputPort in _inputsPortFound.Values)
+            foreach (var inputPort in _inputPorts)
             {
                 inputPort.OutputWires.Clear();
             }
-            foreach (var outputPort in _outputsPortFound.Values)
+            foreach (var outputPort in _outputPorts)
             {
                 outputPort.InputWire = null;
             }
@@ -74,7 +75,7 @@ namespace Wirelog
             _gatesFound.Clear();
             _lampsFound.Clear();
             _wires.Clear();
-            _inputsPortFound.Clear();
+            _inputPorts = null;
         }
     }
 }

@@ -274,9 +274,9 @@ namespace Wirelog
         public static void HitSwitch(int x, int y)
         {
             var hitPos = new Point16(x, y);
-            if (Input.TryGetType(Main.tile[hitPos], out var type))
+            if (Converter.InputsFound.TryGetValue(hitPos, out var input))
             {
-                Input.Activate(type, hitPos);
+                Input.Activate(input.Type, hitPos);
             }
             else
             {
