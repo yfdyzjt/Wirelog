@@ -49,12 +49,12 @@ namespace Wirelog.Outputs
                                 if (Converter.InputsFound.TryGetValue(pos, out var input))
                                 {
                                     outputPort = output.OutputPorts.Where(o =>
-                                    o.InputWire.InputPorts.First().Inputs.Any(i => i == input)).First();
+                                    o.InputWire.InputPorts.FirstOrDefault()?.Inputs.Any(i => i == input) == true).FirstOrDefault();
                                 }
                                 else if (Converter.GatesFound.TryGetValue(pos, out var gate))
                                 {
                                     outputPort = output.OutputPorts.Where(o =>
-                                    o.InputWire.Gates.First() == gate).First();
+                                    o.InputWire.Gates.FirstOrDefault() == gate).FirstOrDefault();
                                 }
                                 if (outputPort != null)
                                 {

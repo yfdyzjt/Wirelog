@@ -175,7 +175,7 @@ namespace Wirelog
             if (inputsToRemove.Count == 0) return false;
             foreach (var posInput in inputsToRemove)
             {
-                posInput.Value.InputPort.Inputs.Remove(posInput.Value);
+                posInput.Value.InputPort?.Inputs.Remove(posInput.Value);
                 posInput.Value.InputPort = null;
                 _inputsFound.Remove(posInput.Key);
             }
