@@ -96,13 +96,16 @@ namespace Wirelog.Outputs
 
                 if (minOutput == output && maxOutput != output)
                 {
-                    teleporterMap.Add(outputPort, maxOutput.Pos);
+                    if (!teleporterMap.ContainsKey(outputPort))
+                    {
+                        teleporterMap.Add(outputPort, maxOutput.Pos);
+                    }
                 }
                 else
                 {
                     output.OutputPorts.Remove(outputPort);
                     outputPort.Output = null;
-                    outputPort.InputWire.OutputPorts.Remove(outputPort);
+                    outputPort.InputWire?.OutputPorts.Remove(outputPort);
                     outputPort.InputWire = null;
                 }
             }

@@ -48,8 +48,12 @@ namespace Wirelog
                             for (int j = 0; j < sizeY; j++)
                             {
                                 var curPos = new Point16(x + i, y + j);
-                                visitedTiles.Add(curPos);
-                                if (Wire.HasWire(curPos)) hasWire = true;
+                                Input.TryGetType(Main.tile[curPos], out var curInputType);
+                                if (curInputType == inputType)
+                                {
+                                    visitedTiles.Add(curPos);
+                                    if (Wire.HasWire(curPos)) hasWire = true;
+                                }
                             }
                         }
                         if (hasWire)
@@ -60,7 +64,8 @@ namespace Wirelog
                                 for (int j = 0; j < sizeY; j++)
                                 {
                                     var curPos = new Point16(x + i, y + j);
-                                    if (Wire.HasWire(curPos))
+                                    Input.TryGetType(Main.tile[curPos], out var curInputType);
+                                    if (Wire.HasWire(curPos) && curInputType == inputType)
                                     {
                                         _inputsFound.Add(curPos, input);
                                     }
@@ -77,8 +82,12 @@ namespace Wirelog
                             for (int j = 0; j < sizeY; j++)
                             {
                                 var curPos = new Point16(x + i, y + j);
-                                visitedTiles.Add(curPos);
-                                if (Wire.HasWire(curPos)) hasWire = true;
+                                Output.TryGetType(Main.tile[curPos], out var curOutputType);
+                                if (curOutputType == outputType)
+                                {
+                                    visitedTiles.Add(curPos);
+                                    if (Wire.HasWire(curPos)) hasWire = true;
+                                }
                             }
                         }
                         if (hasWire)
@@ -89,7 +98,8 @@ namespace Wirelog
                                 for (int j = 0; j < sizeY; j++)
                                 {
                                     var curPos = new Point16(x + i, y + j);
-                                    if (Wire.HasWire(curPos))
+                                    Output.TryGetType(Main.tile[curPos], out var curOutputType);
+                                    if (Wire.HasWire(curPos) && curOutputType == outputType)
                                     {
                                         _outputsFound.Add(curPos, output);
                                     }
