@@ -49,7 +49,7 @@ namespace Wirelog
                             {
                                 var curPos = new Point16(x + i, y + j);
                                 visitedTiles.Add(curPos);
-                                if (Wire.HasWire(Main.tile[curPos])) hasWire = true;
+                                if (Wire.HasWire(curPos)) hasWire = true;
                             }
                         }
                         if (hasWire)
@@ -60,7 +60,7 @@ namespace Wirelog
                                 for (int j = 0; j < sizeY; j++)
                                 {
                                     var curPos = new Point16(x + i, y + j);
-                                    if (Wire.HasWire(Main.tile[curPos]))
+                                    if (Wire.HasWire(curPos))
                                     {
                                         _inputsFound.Add(curPos, input);
                                     }
@@ -78,7 +78,7 @@ namespace Wirelog
                             {
                                 var curPos = new Point16(x + i, y + j);
                                 visitedTiles.Add(curPos);
-                                if (Wire.HasWire(Main.tile[curPos])) hasWire = true;
+                                if (Wire.HasWire(curPos)) hasWire = true;
                             }
                         }
                         if (hasWire)
@@ -89,7 +89,7 @@ namespace Wirelog
                                 for (int j = 0; j < sizeY; j++)
                                 {
                                     var curPos = new Point16(x + i, y + j);
-                                    if (Wire.HasWire(Main.tile[curPos]))
+                                    if (Wire.HasWire(curPos))
                                     {
                                         _outputsFound.Add(curPos, output);
                                     }
@@ -153,6 +153,10 @@ namespace Wirelog
             Action<Wire, Point16, int> traceComponents
             )
         {
+            if(level>20000)
+            {
+
+            }
             if (!WorldGen.InWorld(curPos.X, curPos.Y, 1)) return;
 
             Tile tile = Main.tile[curPos];
