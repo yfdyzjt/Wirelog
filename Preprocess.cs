@@ -129,14 +129,14 @@ namespace Wirelog
             int sourceCount = _inputsFound.Count + _gatesFound.Count;
             foreach (var posInput in _inputsFound)
             {
-                if (i % Math.Max(1, sourceCount / 100) == 0)
-                    Main.statusText = $"connect components {i++ * 1f / sourceCount:P1}";
+                if (i++ % Math.Max(1, sourceCount / 100) == 0)
+                    Main.statusText = $"connect components {i * 1f / sourceCount:P1}"; 
                 TraceSource(posInput.Key, visitedWires);
             }
             foreach (var posGate in _gatesFound)
             {
-                if (i % Math.Max(1, sourceCount / 100) == 0)
-                    Main.statusText = $"connect components {i++ * 1f / sourceCount:P1}";
+                if (i++ % Math.Max(1, sourceCount / 100) == 0)
+                    Main.statusText = $"connect components {i * 1f / sourceCount:P1}";
                 TraceSource(posGate.Key, visitedWires);
             }
         }
