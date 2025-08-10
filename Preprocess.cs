@@ -130,7 +130,7 @@ namespace Wirelog
             foreach (var posInput in _inputsFound)
             {
                 if (i++ % Math.Max(1, sourceCount / 100) == 0)
-                    Main.statusText = $"connect components {i * 1f / sourceCount:P1}"; 
+                    Main.statusText = $"connect components {i * 1f / sourceCount:P1}";
                 TraceSource(posInput.Key, visitedWires);
             }
             foreach (var posGate in _gatesFound)
@@ -154,6 +154,69 @@ namespace Wirelog
             }
         }
 
+        private static void TraceWire(
+            Wire wire,
+            Point16 curPos,
+            Point16 prevPos,
+            int level,
+            HashSet<(Point16, WireType)> visitedWires,
+            Action<Wire, Point16, int> traceComponents
+            )
+        {
+            var queue = new Queue<(Point16 curPos, Point16 prevPos, int level)>();
+            queue.Enqueue((curPos, prevPos, level));
+
+            while (queue.Count > 0)
+            {
+                var (currentPos, previousPos, currentLevel) = queue.Dequeue();
+
+                if (!WorldGen.InWorld(currentPos.X, currentPos.Y, 1)) continue;
+
+                Tile tile = Main.tile[currentPos];
+
+                if (!Wire.HasWire(tile, wire.Type)) continue;
+                if (!JunctionBox.TryGetType(tile, out _) && visitedWires.Contains((currentPos, wire.Type))) continue;
+
+                visitedWires.Add((currentPos, wire.Type));
+                traceComponents(wire, currentPos, currentLevel);
+
+                if (JunctionBox.TryGetType(tile, out var junctionBoxType))
+                {
+                    int dX = 0, dY = 0;
+                    switch (junctionBoxType)
+                    {
+                        case JunctionBoxType.UpDown:
+                            dX = (currentPos.X - previousPos.X);
+                            dY = (currentPos.Y - previousPos.Y);
+                            break;
+                        case JunctionBoxType.UpLeft:
+                            dX = -(currentPos.Y - previousPos.Y);
+                            dY = -(currentPos.X - previousPos.X);
+                            break;
+                        case JunctionBoxType.UpRight:
+                            dX = (currentPos.Y - previousPos.Y);
+                            dY = (currentPos.X - previousPos.X);
+                            break;
+                    }
+                    var newPos = new Point16(currentPos.X + dX, currentPos.Y + dY);
+                    queue.Enqueue((newPos, currentPos, currentLevel + 1));
+                }
+                else
+                {
+                    bool prevJunction = JunctionBox.TryGetType(Main.tile[previousPos], out _);
+                    foreach (var (dX, dY) in new (int, int)[] { (1, 0), (0, 1), (-1, 0), (0, -1) })
+                    {
+                        var newPos = new Point16(currentPos.X + dX, currentPos.Y + dY);
+                        if (!(prevJunction && previousPos == newPos))
+                        {
+                            queue.Enqueue((newPos, currentPos, currentLevel + 1));
+                        }
+                    }
+                }
+            }
+        }
+
+        /*
         private static void TraceWire(
             Wire wire,
             Point16 curPos,
@@ -207,6 +270,7 @@ namespace Wirelog
                 }
             }
         }
+        */
 
         private static void TraceComponents(Wire wire, Point16 curPos, int level)
         {
