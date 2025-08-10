@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Terraria;
 using Terraria.DataStructures;
 
 namespace Wirelog.Outputs
@@ -16,7 +15,11 @@ namespace Wirelog.Outputs
                 var teleporterMap = (Dictionary<OutputPort, Point16>)obj;
                 if (teleporterMap.TryGetValue(outputPort, out var nextPos))
                 {
-                    Main.NewText($"{curPos}, {nextPos}");
+                    WiringWrapper.TeleportPos[0].X = curPos.X;
+                    WiringWrapper.TeleportPos[0].Y = curPos.Y;
+                    WiringWrapper.TeleportPos[1].X = nextPos.X;
+                    WiringWrapper.TeleportPos[1].Y = nextPos.Y;
+                    WiringWrapper.Teleport();
                 }
             }
         }

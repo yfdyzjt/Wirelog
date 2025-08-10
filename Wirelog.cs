@@ -14,6 +14,8 @@ namespace Wirelog
             On_WorldGen.SaveAndQuit += WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser += Wiring_SetCurrentUser;
             On_Wiring.XferWater += Wiring_XferWater;
+            On_Wiring.Teleport += Wiring_Teleport;
+            On_Wiring.TeleporterHitboxIntersects += Wiring_TeleporterHitboxIntersects;
             On_Wiring.UpdateMech += Wiring_UpdateMech;
             On_Wiring.CheckMech += Wiring_CheckMech;
             On_Wiring.HitSwitch += Wiring_HitSwitch;
@@ -33,6 +35,16 @@ namespace Wirelog
         private void Wiring_XferWater(On_Wiring.orig_XferWater orig)
         {
             WiringWrapper.XferWater();
+        }
+
+        private void Wiring_Teleport(On_Wiring.orig_Teleport orig)
+        {
+            WiringWrapper.Teleport();
+        }
+
+        private bool Wiring_TeleporterHitboxIntersects(On_Wiring.orig_TeleporterHitboxIntersects orig, Microsoft.Xna.Framework.Rectangle teleporter, Microsoft.Xna.Framework.Rectangle entity)
+        {
+            return WiringWrapper.TeleporterHitboxIntersects(teleporter, entity);
         }
 
         private void Wiring_UpdateMech(On_Wiring.orig_UpdateMech orig)
@@ -57,6 +69,8 @@ namespace Wirelog
             On_WorldGen.SaveAndQuit -= WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser -= Wiring_SetCurrentUser;
             On_Wiring.XferWater -= Wiring_XferWater;
+            On_Wiring.Teleport -= Wiring_Teleport;
+            On_Wiring.TeleporterHitboxIntersects -= Wiring_TeleporterHitboxIntersects;
             On_Wiring.UpdateMech -= Wiring_UpdateMech;
             On_Wiring.CheckMech -= Wiring_CheckMech;
             On_Wiring.HitSwitch -= Wiring_HitSwitch;
