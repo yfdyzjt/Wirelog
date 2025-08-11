@@ -35,7 +35,6 @@ struct SharedMemoryLayout
 	volatile int32_t input_ready;
 	volatile int32_t output_ready;
 	volatile int32_t shutdown;
-	volatile int32_t input_sequence;
 
 	int32_t input_id;
 	int32_t output_count;
@@ -276,7 +275,6 @@ bool initialize_ipc()
 	pSharedMem->input_ready = 0;
 	pSharedMem->output_ready = 0;
 	pSharedMem->shutdown = 0;
-	pSharedMem->input_sequence = 0;
 	pSharedMem->sim_ready = 1;
 
 	return true;
@@ -363,9 +361,6 @@ void run_ipc_mode()
 		}
 		if (pSharedMem->shutdown != 0)
 			break;
-
-		// if (pSharedMem->input_sequence == last_seq) { pSharedMem->input_ready = 0; continue; }
-		// last_seq = pSharedMem->input_sequence;
 
 		int input_id = pSharedMem->input_id;
 		pSharedMem->input_ready = 0;

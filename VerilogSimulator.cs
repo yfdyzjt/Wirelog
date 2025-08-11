@@ -20,7 +20,6 @@ namespace Wirelog
         private static readonly int InputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputReady)).ToInt32();
         private static readonly int OutputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputReady)).ToInt32();
         private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.Shutdown)).ToInt32();
-        private static readonly int InputSequenceOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputSequence)).ToInt32();
         private static readonly int InputIdOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputId)).ToInt32();
         private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputCount)).ToInt32();
         private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputIds)).ToInt32();
@@ -32,7 +31,6 @@ namespace Wirelog
             public int InputReady;
             public int OutputReady;
             public int Shutdown;
-            public int InputSequence;
 
             public int InputId;
             public int OutputCount;
@@ -196,17 +194,14 @@ namespace Wirelog
 
                 try
                 {
-                    int seq = _accessor.ReadInt32(InputSequenceOffset);
-                    seq = unchecked(seq + 1);
                     _accessor.Write(OutputReadyOffset, 0);
                     _accessor.Write(InputIdOffset, inputPortId);
-                    _accessor.Write(InputSequenceOffset, seq);
                     _accessor.Write(InputReadyOffset, 1);
 
                     WakeByAddressAll(basePtr + InputReadyOffset);
 
                     int expectedOutputReady = 0;
-                    if (!WaitOnAddress(basePtr + OutputReadyOffset, &expectedOutputReady, (IntPtr)sizeof(int), 1000))
+                    if (!WaitOnAddress(basePtr + OutputReadyOffset, &expectedOutputReady, sizeof(int), 1000))
                     {
                         if (_accessor.ReadInt32(ShutdownOffset) != 0) return [];
                         Main.NewText("Timeout waiting for simulator output.");
