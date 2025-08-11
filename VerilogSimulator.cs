@@ -166,11 +166,11 @@ namespace Wirelog
             Main.NewText("Verilog simulator disconnected.");
         }
 
-        [LibraryImport("api-ms-win-core-synch-l1-2-0.dll", SetLastError = true)]
+        [LibraryImport("API-MS-Win-Core-Synch-l1-2-0.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static unsafe partial bool WaitOnAddress(void* Address, void* CompareAddress, IntPtr AddressSize, int dwMilliseconds);
 
-        [LibraryImport("api-ms-win-core-synch-l1-2-0.dll", SetLastError = true)]
+        [LibraryImport("API-MS-Win-Core-Synch-l1-2-0.dll", SetLastError = true)]
         private static unsafe partial void WakeByAddressAll(void* Address);
 
         public static unsafe List<int> SendInputAndWaitForOutput(int inputPortId)
