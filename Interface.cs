@@ -9,13 +9,16 @@ namespace Wirelog
             if (Converter.InputsPortFound.TryGetValue(pos, out var inputPort))
             {
                 int inputPortId = inputPort.Id;
-                var outputPortIds = VerilogSimulator.SendInputAndWaitForOutput(inputPortId);
+                VerilogSimulator.EnqueueInput(inputPortId);
+            }
+        }
 
-                foreach (var outputPortId in outputPortIds)
-                {
-                    var outputPort = Converter.OutputsPortFound[outputPortId];
-                    Output.Activate(outputPort.Output.Type, outputPort);
-                }
+        public static void OutputsActivate()
+        {
+            foreach (var outputPortId in VerilogSimulator.LastFrameOutputs)
+            {
+                var outputPort = Converter.OutputsPortFound[outputPortId];
+                Output.Activate(outputPort.Output.Type, outputPort);
             }
         }
 

@@ -18,11 +18,11 @@
 constexpr auto MAX_CYCLE_COUNT = 1000;
 
 constexpr auto SHARED_MEM_NAME = "TerrariaWiringSim_SharedMem";
-constexpr auto INPUT_EVENT_NAME = "TerrariaWiringSim_InputEvent";
-constexpr auto  OUTPUT_EVENT_NAME = "TerrariaWiringSim_OutputEvent";
+constexpr auto FRAME_SYNC_EVENT_NAME = "TerrariaWiringSim_FrameSyncEvent";
 constexpr auto SHUTDOWN_EVENT_NAME = "TerrariaWiringSim_ShutdownEvent";
 
-constexpr auto IPC_MAX_OUTPUT_IDS_PER_SET = 65536;
+constexpr auto IPC_MAX_INPUT_RLE_SIZE = 8192;
+constexpr auto IPC_MAX_OUTPUT_BATCH_SIZE = 65536;
 
 static VWiring* top;
 
@@ -30,20 +30,21 @@ static VWiring* top;
 struct SharedMemoryLayout
 {
 	std::atomic<int32_t> sim_ready;
-	std::atomic<int32_t> input_ready;
-	std::atomic<int32_t> output_ready;
+	std::atomic<int32_t> frame_sync_ready;
 	std::atomic<int32_t> shutdown;
 
-	int32_t input_id;
+	int32_t input_rle_count;
+	int32_t input_rle_ids[IPC_MAX_INPUT_RLE_SIZE];
+	int32_t input_rle_counts[IPC_MAX_INPUT_RLE_SIZE];
+	
 	int32_t output_count;
-	int32_t output_ids[IPC_MAX_OUTPUT_IDS_PER_SET];
+	int32_t output_ids[IPC_MAX_OUTPUT_BATCH_SIZE];
 };
 #pragma pack(pop)
 
 static HANDLE hMapFile = NULL;
 static SharedMemoryLayout* pSharedMem = nullptr;
-static HANDLE hInputEvent = NULL;
-static HANDLE hOutputEvent = NULL;
+static HANDLE hFrameSyncEvent = NULL;
 static HANDLE hShutdownEvent = NULL;
 
 template <typename T>
@@ -226,10 +227,8 @@ void cleanup_ipc()
 	}
 	if (hMapFile)
 		CloseHandle(hMapFile);
-	if (hInputEvent)
-		CloseHandle(hInputEvent);
-	if (hOutputEvent)
-		CloseHandle(hOutputEvent);
+	if (hFrameSyncEvent)
+		CloseHandle(hFrameSyncEvent);
 	if (hShutdownEvent)
 		CloseHandle(hShutdownEvent);
 	std::cout << "[IPC] Resources cleaned up." << std::endl;
@@ -264,11 +263,10 @@ bool initialize_ipc()
 		return false;
 	}
 
-	hInputEvent = CreateEvent(NULL, FALSE, FALSE, INPUT_EVENT_NAME);
-	hOutputEvent = CreateEvent(NULL, FALSE, FALSE, OUTPUT_EVENT_NAME);
+	hFrameSyncEvent = CreateEvent(NULL, FALSE, FALSE, FRAME_SYNC_EVENT_NAME);
 	hShutdownEvent = CreateEvent(NULL, TRUE, FALSE, SHUTDOWN_EVENT_NAME);
 
-	if (!hInputEvent || !hOutputEvent || !hShutdownEvent)
+	if (!hFrameSyncEvent || !hShutdownEvent)
 	{
 		std::cerr << "[IPC] Failed to create sync events: " << GetLastError() << std::endl;
 		cleanup_ipc();
@@ -276,10 +274,11 @@ bool initialize_ipc()
 	}
 
 	new (pSharedMem) SharedMemoryLayout();
-	pSharedMem->input_ready = 0;
-	pSharedMem->output_ready = 0;
+	pSharedMem->frame_sync_ready = 0;
 	pSharedMem->shutdown = 0;
 	pSharedMem->sim_ready = 1;
+	pSharedMem->input_rle_count = 0;
+	pSharedMem->output_count = 0;
 
 	return true;
 }
@@ -347,9 +346,11 @@ void run_ipc_mode()
 		return;
 	}
 
-	std::cout << "[IPC] Shared memory and events created. Waiting for client commands..." << std::endl;
+	std::cout << "[IPC] Shared memory and events created. Waiting for frame sync..." << std::endl;
 
-	HANDLE handles[] = { hInputEvent, hShutdownEvent };
+	HANDLE handles[] = { hFrameSyncEvent, hShutdownEvent };
+	std::vector<int32_t> outputs_flat;
+	outputs_flat.reserve(IPC_MAX_OUTPUT_BATCH_SIZE);
 
 	while (true)
 	{
@@ -363,31 +364,37 @@ void run_ipc_mode()
 
 		if (waitResult == WAIT_OBJECT_0)
 		{
-			if (pSharedMem->input_ready == 1)
+			int32_t rle_count = pSharedMem->input_rle_count;
+			if (rle_count < 0) rle_count = 0;
+			if (rle_count > IPC_MAX_INPUT_RLE_SIZE) rle_count = IPC_MAX_INPUT_RLE_SIZE;
+
+			outputs_flat.clear();
+			for (int i = 0; i < rle_count; ++i)
 			{
-				int input_id = pSharedMem->input_id;
-				pSharedMem->input_ready = 0;
-
-				auto outputs = run_simulation_cycle(input_id);
-
-				int32_t data_len = static_cast<int32_t>(outputs.size());
-				if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
+				int input_id = pSharedMem->input_rle_ids[i];
+				int repeat = pSharedMem->input_rle_counts[i];
+				if (repeat < 1) repeat = 1;
+				for (int t = 0; t < repeat; ++t)
 				{
-					std::cerr << "[IPC] ERROR: Output data size (" << data_len
-						<< ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
-						<< "). Truncating output." << std::endl;
-					data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
+					auto outs = run_simulation_cycle(input_id);
+					outputs_flat.insert(outputs_flat.end(), outs.begin(), outs.end());
+					if (outputs_flat.size() >= IPC_MAX_OUTPUT_BATCH_SIZE) break;
 				}
-
-				pSharedMem->output_count = data_len;
-				if (data_len > 0)
-				{
-					memcpy(pSharedMem->output_ids, outputs.data(), data_len * sizeof(int32_t));
-				}
-
-				pSharedMem->output_ready = 1;
-				SetEvent(hOutputEvent);
+				if (outputs_flat.size() >= IPC_MAX_OUTPUT_BATCH_SIZE) break;
 			}
+
+			int32_t total_out = static_cast<int32_t>(outputs_flat.size());
+			if (total_out > IPC_MAX_OUTPUT_BATCH_SIZE)
+			{
+				total_out = IPC_MAX_OUTPUT_BATCH_SIZE;
+			}
+			pSharedMem->output_count = total_out;
+			if (total_out > 0)
+			{
+				memcpy(pSharedMem->output_ids, outputs_flat.data(), total_out * sizeof(int32_t));
+			}
+
+			pSharedMem->frame_sync_ready = 1;
 		}
 	}
 

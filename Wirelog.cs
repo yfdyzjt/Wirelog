@@ -11,6 +11,7 @@ namespace Wirelog
         {
             WorldFile.OnWorldLoad += Converter.Convert;
             WorldFile.OnWorldLoad += VerilogSimulator.Start;
+            On_WorldGen.UpdateWorld += WorldGen_UpdateWorld;
             On_WorldGen.SaveAndQuit += WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser += Wiring_SetCurrentUser;
             On_Wiring.XferWater += Wiring_XferWater;
@@ -25,6 +26,13 @@ namespace Wirelog
         {
             VerilogSimulator.Stop();
             orig(callback);
+        }
+
+        private void WorldGen_UpdateWorld(On_WorldGen.orig_UpdateWorld orig)
+        {
+            orig();
+            VerilogSimulator.FrameSync();
+            Interface.OutputsActivate();
         }
 
         private static void Wiring_SetCurrentUser(On_Wiring.orig_SetCurrentUser orig, int plr)
@@ -66,6 +74,7 @@ namespace Wirelog
         {
             WorldFile.OnWorldLoad -= Converter.Convert;
             WorldFile.OnWorldLoad -= VerilogSimulator.Start;
+            On_WorldGen.UpdateWorld -= WorldGen_UpdateWorld;
             On_WorldGen.SaveAndQuit -= WorldGen_SaveAndQuit;
             On_Wiring.SetCurrentUser -= Wiring_SetCurrentUser;
             On_Wiring.XferWater -= Wiring_XferWater;

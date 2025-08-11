@@ -13,40 +13,43 @@ namespace Wirelog
     public static class VerilogSimulator
     {
         private const string SharedMemName = "TerrariaWiringSim_SharedMem";
-        private const string InputEventName = "TerrariaWiringSim_InputEvent";
-        private const string OutputEventName = "TerrariaWiringSim_OutputEvent";
+        private const string FrameSyncEventName = "TerrariaWiringSim_FrameSyncEvent";
         private const string ShutdownEventName = "TerrariaWiringSim_ShutdownEvent";
 
-        private const int IpcMaxOutputIdsPerSet = 65536;
+        private const int IpcMaxInputRleSize = 8192;
+        private const int IpcMaxOutputBatchSize = 65536;
 
-        private static readonly int SimReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("SimReady").ToInt32();
-        private static readonly int InputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputReady").ToInt32();
-        private static readonly int OutputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputReady").ToInt32();
-        private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>("Shutdown").ToInt32();
-        private static readonly int InputIdOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputId").ToInt32();
-        private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputCount").ToInt32();
-        private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputIds").ToInt32();
-
+        private static readonly int SimReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.SimReady)).ToInt32();
+        private static readonly int FrameSyncReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.FrameSyncReady)).ToInt32();
+        private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.Shutdown)).ToInt32();
+        private static readonly int InputRleCountOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputRleCount)).ToInt32();
+        private static readonly int InputRleIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputRleIds)).ToInt32();
+        private static readonly int InputRleCountsOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputRleCounts)).ToInt32();
+        private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputCount)).ToInt32();
+        private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputIds)).ToInt32();
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct SharedMemoryLayout
         {
             public int SimReady;
-            public int InputReady;
-            public int OutputReady;
+            public int FrameSyncReady;
             public int Shutdown;
 
-            public int InputId;
+            public int InputRleCount;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxInputRleSize)]
+            public int[] InputRleIds;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxInputRleSize)]
+            public int[] InputRleCounts;
+
             public int OutputCount;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxOutputIdsPerSet)]
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = IpcMaxOutputBatchSize)]
             public int[] OutputIds;
         }
 
         private static Process _simProcess;
         private static MemoryMappedFile _mmf;
         private static MemoryMappedViewAccessor _accessor;
-        private static EventWaitHandle _inputEvent;
-        private static EventWaitHandle _outputEvent;
+        private static EventWaitHandle _frameSyncEvent;
         private static EventWaitHandle _shutdownEvent;
 
         public static bool IsRunning => _simProcess != null && !_simProcess.HasExited;
@@ -128,8 +131,7 @@ namespace Wirelog
                 {
                     try
                     {
-                        _inputEvent = EventWaitHandle.OpenExisting(InputEventName);
-                        _outputEvent = EventWaitHandle.OpenExisting(OutputEventName);
+                        _frameSyncEvent = EventWaitHandle.OpenExisting(FrameSyncEventName);
                         eventsConnected = true;
                     }
                     catch
@@ -143,7 +145,6 @@ namespace Wirelog
                 {
                     throw new TimeoutException("Failed to connect to event handles after multiple attempts.");
                 }
-
 
                 Main.NewText("Verilog simulator connected.");
             }
@@ -195,10 +196,8 @@ namespace Wirelog
                 _mmf?.Dispose();
                 _mmf = null;
 
-                _inputEvent?.Dispose();
-                _inputEvent = null;
-                _outputEvent?.Dispose();
-                _outputEvent = null;
+                _frameSyncEvent?.Dispose();
+                _frameSyncEvent = null;
                 _shutdownEvent?.Dispose();
                 _shutdownEvent = null;
             }
@@ -210,59 +209,77 @@ namespace Wirelog
             Main.NewText("Verilog simulator disconnected.");
         }
 
-        public static List<int> SendInputAndWaitForOutput(int inputPortId)
-        {
-            if (_accessor == null || _inputEvent == null || _outputEvent == null)
-            {
-                Main.NewText("Simulator not connected.");
-                return [];
-            }
+        private static readonly List<int> _currentFrameInputIds = new(IpcMaxInputRleSize);
+        private static readonly List<int> _currentFrameInputCounts = new(IpcMaxInputRleSize);
+        private static readonly List<int> _lastFrameOutputs = new(IpcMaxOutputBatchSize);
 
+        public static List<int> LastFrameOutputs => _lastFrameOutputs;
+
+        public static void EnqueueInput(int inputPortId)
+        {
+            if (_accessor == null)
+                return;
+            int n = _currentFrameInputIds.Count;
+            if (n > 0 && _currentFrameInputIds[n - 1] == inputPortId)
+            {
+                int newCnt = _currentFrameInputCounts[n - 1] + 1;
+                if (newCnt < 0) newCnt = int.MaxValue;
+                _currentFrameInputCounts[n - 1] = newCnt;
+                return;
+            }
+            if (n < IpcMaxInputRleSize)
+            {
+                _currentFrameInputIds.Add(inputPortId);
+                _currentFrameInputCounts.Add(1);
+            }
+        }
+
+        public static void FrameSync()
+        {
+            if (_accessor == null || _frameSyncEvent == null)
+            {
+                return;
+            }
             if (_simProcess == null || _simProcess.HasExited)
             {
-                Main.NewText("Simulator process is not running.");
-                return [];
+                return;
             }
 
             try
             {
-                _accessor.Write(OutputReadyOffset, 0);
+                _lastFrameOutputs.Clear();
 
-                _accessor.Write(InputIdOffset, inputPortId);
-                _accessor.Write(InputReadyOffset, 1);
-
-                _inputEvent.Set();
-
-                bool signaled = _outputEvent.WaitOne(1000);
-                if (!signaled)
+                int frameReady = _accessor.ReadInt32(FrameSyncReadyOffset);
+                if (frameReady != 0)
                 {
-                    Main.NewText("Timeout waiting for simulator output.");
-                    return [];
+                    int outCount = _accessor.ReadInt32(OutputCountOffset);
+                    if (outCount > 0)
+                    {
+                        var tmp = new int[outCount];
+                        _accessor.ReadArray(OutputIdsOffset, tmp, 0, outCount);
+                        _lastFrameOutputs.AddRange(tmp);
+                    }
+
+                    _accessor.Write(FrameSyncReadyOffset, 0);
                 }
 
-                _accessor.Read(OutputReadyOffset, out int outputReady);
-                if (outputReady == 0)
+                int rleCount = _currentFrameInputIds.Count;
+                _accessor.Write(InputRleCountOffset, rleCount);
+                if (rleCount > 0)
                 {
-                    Main.NewText("No new output data available (flag not set).");
-                    return [];
+                    _accessor.WriteArray(InputRleIdsOffset, _currentFrameInputIds.ToArray(), 0, rleCount);
+                    _accessor.WriteArray(InputRleCountsOffset, _currentFrameInputCounts.ToArray(), 0, rleCount);
                 }
 
-                int count = _accessor.ReadInt32(OutputCountOffset);
-                var outputIds = new List<int>();
-                if (count > 0)
-                {
-                    var buffer = new int[count];
-                    _accessor.ReadArray(OutputIdsOffset, buffer, 0, count);
-                    outputIds.AddRange(buffer);
-                }
+                _frameSyncEvent.Set();
 
-                return outputIds;
+                _currentFrameInputIds.Clear();
+                _currentFrameInputCounts.Clear();
             }
             catch (Exception ex)
             {
-                Main.NewText($"Error in SendInputAndWaitForOutput: {ex.Message}");
+                Main.NewText($"Error in FrameSync: {ex.Message}");
                 Stop();
-                return [];
             }
         }
     }
