@@ -10,19 +10,23 @@ using Terraria.ModLoader;
 
 namespace Wirelog
 {
-    public static partial class VerilogSimulator
+    public static class VerilogSimulator
     {
         private const string SharedMemName = "TerrariaWiringSim_SharedMem";
+        private const string InputEventName = "TerrariaWiringSim_InputEvent";
+        private const string OutputEventName = "TerrariaWiringSim_OutputEvent";
+        private const string ShutdownEventName = "TerrariaWiringSim_ShutdownEvent";
 
         private const int IpcMaxOutputIdsPerSet = 65536;
 
-        private static readonly int SimReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.SimReady)).ToInt32();
-        private static readonly int InputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputReady)).ToInt32();
-        private static readonly int OutputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputReady)).ToInt32();
-        private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.Shutdown)).ToInt32();
-        private static readonly int InputIdOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.InputId)).ToInt32();
-        private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputCount)).ToInt32();
-        private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>(nameof(SharedMemoryLayout.OutputIds)).ToInt32();
+        private static readonly int SimReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("SimReady").ToInt32();
+        private static readonly int InputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputReady").ToInt32();
+        private static readonly int OutputReadyOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputReady").ToInt32();
+        private static readonly int ShutdownOffset = Marshal.OffsetOf<SharedMemoryLayout>("Shutdown").ToInt32();
+        private static readonly int InputIdOffset = Marshal.OffsetOf<SharedMemoryLayout>("InputId").ToInt32();
+        private static readonly int OutputCountOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputCount").ToInt32();
+        private static readonly int OutputIdsOffset = Marshal.OffsetOf<SharedMemoryLayout>("OutputIds").ToInt32();
+
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct SharedMemoryLayout
@@ -41,6 +45,9 @@ namespace Wirelog
         private static Process _simProcess;
         private static MemoryMappedFile _mmf;
         private static MemoryMappedViewAccessor _accessor;
+        private static EventWaitHandle _inputEvent;
+        private static EventWaitHandle _outputEvent;
+        private static EventWaitHandle _shutdownEvent;
 
         public static bool IsRunning => _simProcess != null && !_simProcess.HasExited;
 
@@ -58,6 +65,7 @@ namespace Wirelog
             try
             {
                 Main.statusText = "Simulator process start.";
+                _shutdownEvent = new EventWaitHandle(false, EventResetMode.ManualReset, ShutdownEventName);
 
                 var psi = new ProcessStartInfo
                 {
@@ -114,6 +122,29 @@ namespace Wirelog
                     throw new TimeoutException("Simulator did not become ready in time.");
                 }
 
+                retryCount = 0;
+                bool eventsConnected = false;
+                while (retryCount < 10 && !eventsConnected)
+                {
+                    try
+                    {
+                        _inputEvent = EventWaitHandle.OpenExisting(InputEventName);
+                        _outputEvent = EventWaitHandle.OpenExisting(OutputEventName);
+                        eventsConnected = true;
+                    }
+                    catch
+                    {
+                        retryCount++;
+                        Thread.Sleep(500);
+                    }
+                }
+
+                if (!eventsConnected)
+                {
+                    throw new TimeoutException("Failed to connect to event handles after multiple attempts.");
+                }
+
+
                 Main.NewText("Verilog simulator connected.");
             }
             catch (Exception e)
@@ -134,6 +165,12 @@ namespace Wirelog
                 }
                 catch { }
             }
+
+            try
+            {
+                _shutdownEvent?.Set();
+            }
+            catch { }
 
             if (IsRunning)
             {
@@ -157,6 +194,13 @@ namespace Wirelog
                 _accessor = null;
                 _mmf?.Dispose();
                 _mmf = null;
+
+                _inputEvent?.Dispose();
+                _inputEvent = null;
+                _outputEvent?.Dispose();
+                _outputEvent = null;
+                _shutdownEvent?.Dispose();
+                _shutdownEvent = null;
             }
             catch (Exception ex)
             {
@@ -166,15 +210,9 @@ namespace Wirelog
             Main.NewText("Verilog simulator disconnected.");
         }
 
-        [LibraryImport("kernelbase.dll", SetLastError = true)]
-        private static unsafe partial int WaitOnAddress(int* address, int* compareAddress, int addressSize, int dwMilliseconds);
-
-        [LibraryImport("kernelbase.dll", SetLastError = true)]
-        private static unsafe partial void WakeByAddressAll(int* address);
-
-        public static unsafe List<int> SendInputAndWaitForOutput(int inputPortId)
+        public static List<int> SendInputAndWaitForOutput(int inputPortId)
         {
-            if (_accessor == null)
+            if (_accessor == null || _inputEvent == null || _outputEvent == null)
             {
                 Main.NewText("Simulator not connected.");
                 return [];
@@ -188,41 +226,35 @@ namespace Wirelog
 
             try
             {
-                byte* basePtr = null;
-                _accessor.SafeMemoryMappedViewHandle.AcquirePointer(ref basePtr);
+                _accessor.Write(OutputReadyOffset, 0);
 
-                try
+                _accessor.Write(InputIdOffset, inputPortId);
+                _accessor.Write(InputReadyOffset, 1);
+
+                _inputEvent.Set();
+
+                bool signaled = _outputEvent.WaitOne(1000);
+                if (!signaled)
                 {
-                    _accessor.Write(OutputReadyOffset, 0);
-                    _accessor.Write(InputIdOffset, inputPortId);
-                    _accessor.Write(InputReadyOffset, 1);
-
-                    WakeByAddressAll((int*)((long)basePtr + InputReadyOffset));
-
-                    int expectedOutputReady = 0;
-                    int result = WaitOnAddress((int*)((long)basePtr + OutputReadyOffset), &expectedOutputReady, sizeof(int), 1000);
-                    if (result is 0 or 258)
-                    {
-                        if (_accessor.ReadInt32(ShutdownOffset) != 0) return [];
-                        Main.NewText("Timeout waiting for simulator output.");
-                        return [];
-                    }
+                    Main.NewText("Timeout waiting for simulator output.");
+                    return [];
                 }
-                finally
+
+                _accessor.Read(OutputReadyOffset, out int outputReady);
+                if (outputReady == 0)
                 {
-                    _accessor.SafeMemoryMappedViewHandle.ReleasePointer();
+                    Main.NewText("No new output data available (flag not set).");
+                    return [];
                 }
 
                 int count = _accessor.ReadInt32(OutputCountOffset);
-                var outputIds = new List<int>(count);
+                var outputIds = new List<int>();
                 if (count > 0)
                 {
                     var buffer = new int[count];
                     _accessor.ReadArray(OutputIdsOffset, buffer, 0, count);
                     outputIds.AddRange(buffer);
                 }
-
-                _accessor.Write(OutputReadyOffset, 0);
 
                 return outputIds;
             }

@@ -6,13 +6,9 @@
 #include <type_traits>
 #include <thread>
 #include <chrono>
-#include <intrin.h>
-#include <cstring>
 
 #if defined(_WIN32)
 #include <windows.h>
-#include <synchapi.h>
-#pragma comment(lib, "Synchronization")
 #endif
 
 #include "VWiring.h"
@@ -22,19 +18,21 @@
 constexpr auto MAX_CYCLE_COUNT = 1000;
 
 constexpr auto SHARED_MEM_NAME = "TerrariaWiringSim_SharedMem";
+constexpr auto INPUT_EVENT_NAME = "TerrariaWiringSim_InputEvent";
+constexpr auto  OUTPUT_EVENT_NAME = "TerrariaWiringSim_OutputEvent";
+constexpr auto SHUTDOWN_EVENT_NAME = "TerrariaWiringSim_ShutdownEvent";
+
 constexpr auto IPC_MAX_OUTPUT_IDS_PER_SET = 65536;
 
-// constexpr auto LOG_INTERVAL = 1000;
-
-static VWiring *top;
+static VWiring* top;
 
 #pragma pack(push, 1)
 struct SharedMemoryLayout
 {
-	volatile int32_t sim_ready;
-	volatile int32_t input_ready;
-	volatile int32_t output_ready;
-	volatile int32_t shutdown;
+	std::atomic<int32_t> sim_ready;
+	std::atomic<int32_t> input_ready;
+	std::atomic<int32_t> output_ready;
+	std::atomic<int32_t> shutdown;
 
 	int32_t input_id;
 	int32_t output_count;
@@ -43,16 +41,13 @@ struct SharedMemoryLayout
 #pragma pack(pop)
 
 static HANDLE hMapFile = NULL;
-static SharedMemoryLayout *pSharedMem = nullptr;
-
-static thread_local std::vector<int32_t> output_cache;
-
-static uint64_t total_simulations = 0;
-static uint64_t total_simulation_time_us = 0;
-static uint64_t max_simulation_time_us = 0;
+static SharedMemoryLayout* pSharedMem = nullptr;
+static HANDLE hInputEvent = NULL;
+static HANDLE hOutputEvent = NULL;
+static HANDLE hShutdownEvent = NULL;
 
 template <typename T>
-void clear_input(T &in)
+void clear_input(T& in)
 {
 	if constexpr (std::is_integral_v<T>)
 	{
@@ -67,7 +62,7 @@ void clear_input(T &in)
 }
 
 template <typename T>
-void set_input_bit(T &in, int input_idx)
+void set_input_bit(T& in, int input_idx)
 {
 	if constexpr (std::is_integral_v<T>)
 	{
@@ -86,7 +81,7 @@ void set_input_bit(T &in, int input_idx)
 }
 
 template <typename T>
-void get_output_bit(const T &out, std::vector<int32_t> &outputs)
+void get_output_bit(const T& out, std::vector<int32_t>& outputs)
 {
 	if constexpr (std::is_integral_v<T>)
 	{
@@ -101,7 +96,7 @@ void get_output_bit(const T &out, std::vector<int32_t> &outputs)
 	}
 	else
 	{
-		const uint32_t *words = reinterpret_cast<const uint32_t *>(&out);
+		const uint32_t* words = reinterpret_cast<const uint32_t*>(&out);
 		const int words_count = static_cast<int>(sizeof(out) / sizeof(uint32_t));
 		for (int w = 0; w < words_count; ++w)
 		{
@@ -117,7 +112,8 @@ void get_output_bit(const T &out, std::vector<int32_t> &outputs)
 	}
 }
 /*
-bool get_output_bit(const T &out, int bit_idx)
+template <typename T>
+bool get_output_bit(const T& out, int bit_idx)
 {
 	if constexpr (std::is_integral_v<T>)
 	{
@@ -151,7 +147,7 @@ void toggle_eval()
 
 void initial_reset()
 {
-	std::cout << "[SIM] Performing initial reset...\n";
+	std::cout << "[SIM] Performing initial reset..." << std::endl;
 	top->reset = 1;
 	for (int i = 0; i < 5; ++i)
 	{
@@ -162,7 +158,7 @@ void initial_reset()
 
 	clear_input(top->in);
 	toggle_eval();
-	std::cout << "[SIM] Initial reset complete.\n";
+	std::cout << "[SIM] Initial reset complete." << std::endl;
 }
 
 std::vector<int32_t> run_simulation_cycle(int input_idx)
@@ -186,7 +182,9 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 	toggle_eval();
 
 	if (input_idx >= 0 && input_idx < top->in_width)
+	{
 		set_input_bit(top->in, input_idx);
+	}
 	toggle_clock();
 	clear_input(top->in);
 	toggle_eval();
@@ -205,28 +203,17 @@ std::vector<int32_t> run_simulation_cycle(int input_idx)
 
 	if (cycle_count >= MAX_CYCLE_COUNT)
 	{
-		std::cerr << "[SIM] WARNING: Simulation timed out! Wiring may be unstable.\n";
+		std::cerr << "[SIM] WARNING: Simulation timed out! Wiring may be unstable." << std::endl;
 	}
 	else
 	{
-		// total_simulations++;
-		// total_simulation_time_us += (uint64_t)duration_us;
-		// if ((uint64_t)duration_us > max_simulation_time_us) max_simulation_time_us = (uint64_t)duration_us;
-		// if (total_simulations % LOG_INTERVAL == 0)
-		// {
-		// 	uint64_t avg_us = total_simulation_time_us / total_simulations;
-		// 	std::cout << "[SIM] Stats: count=" << total_simulations
-		// 		<< ", avg_us=" << avg_us
-		// 		<< ", max_us=" << max_simulation_time_us
-		// 		<< ", last_cycles=" << cycle_count << "\n";
-		// }
+		// std::cout << "[SIM] Wiring stable after " << cycle_count << " cycles, duration: " << duration_us << " us." << std::endl;
 	}
 
-	output_cache.clear();
-	output_cache.reserve(64);
-	get_output_bit(top->out, output_cache);
-
-	return output_cache;
+	std::vector<int32_t> output_idx;
+	get_output_bit(top->out, output_idx);
+	// std::cout << "[SIM] Found " << output_idx.size() << " active outputs." << std::endl;
+	return output_idx;
 }
 
 void cleanup_ipc()
@@ -239,7 +226,13 @@ void cleanup_ipc()
 	}
 	if (hMapFile)
 		CloseHandle(hMapFile);
-	std::cout << "[IPC] Resources cleaned up.\n";
+	if (hInputEvent)
+		CloseHandle(hInputEvent);
+	if (hOutputEvent)
+		CloseHandle(hOutputEvent);
+	if (hShutdownEvent)
+		CloseHandle(hShutdownEvent);
+	std::cout << "[IPC] Resources cleaned up." << std::endl;
 }
 
 bool initialize_ipc()
@@ -258,7 +251,7 @@ bool initialize_ipc()
 		return false;
 	}
 
-	pSharedMem = (SharedMemoryLayout *)MapViewOfFile(
+	pSharedMem = (SharedMemoryLayout*)MapViewOfFile(
 		hMapFile,
 		FILE_MAP_ALL_ACCESS,
 		0, 0,
@@ -267,6 +260,17 @@ bool initialize_ipc()
 	if (pSharedMem == NULL)
 	{
 		std::cerr << "[IPC] Failed to map view of shared memory: " << GetLastError() << std::endl;
+		cleanup_ipc();
+		return false;
+	}
+
+	hInputEvent = CreateEvent(NULL, FALSE, FALSE, INPUT_EVENT_NAME);
+	hOutputEvent = CreateEvent(NULL, FALSE, FALSE, OUTPUT_EVENT_NAME);
+	hShutdownEvent = CreateEvent(NULL, TRUE, FALSE, SHUTDOWN_EVENT_NAME);
+
+	if (!hInputEvent || !hOutputEvent || !hShutdownEvent)
+	{
+		std::cerr << "[IPC] Failed to create sync events: " << GetLastError() << std::endl;
 		cleanup_ipc();
 		return false;
 	}
@@ -304,12 +308,12 @@ void run_console_mode()
 			{
 				input_id = std::stoi(line);
 			}
-			catch (const std::invalid_argument &ia)
+			catch (const std::invalid_argument& ia)
 			{
 				std::cerr << "[Console] Invalid input. Please enter an integer, 'reset', or 'exit'." << std::endl;
 				continue;
 			}
-			catch (const std::out_of_range &oor)
+			catch (const std::out_of_range& oor)
 			{
 				std::cerr << "[Console] Input number is out of range." << std::endl;
 				continue;
@@ -343,53 +347,54 @@ void run_ipc_mode()
 		return;
 	}
 
-	std::cout << "[IPC] Shared memory created. Waiting for client commands...\n";
+	std::cout << "[IPC] Shared memory and events created. Waiting for client commands..." << std::endl;
 
-	int last_seq = -1;
+	HANDLE handles[] = { hInputEvent, hShutdownEvent };
+
 	while (true)
 	{
-		if (pSharedMem->shutdown != 0)
+		DWORD waitResult = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+
+		if (waitResult == WAIT_OBJECT_0 + 1 || pSharedMem->shutdown != 0)
 		{
-			std::cout << "[IPC] Shutdown signal received.\n";
+			std::cout << "[IPC] Shutdown signal received." << std::endl;
 			break;
 		}
 
-		int expected = 0;
-		while (pSharedMem->input_ready == 0 && pSharedMem->shutdown == 0)
+		if (waitResult == WAIT_OBJECT_0)
 		{
-			WaitOnAddress((volatile void *)&pSharedMem->input_ready, &expected, sizeof(expected), INFINITE);
+			if (pSharedMem->input_ready == 1)
+			{
+				int input_id = pSharedMem->input_id;
+				pSharedMem->input_ready = 0;
+
+				auto outputs = run_simulation_cycle(input_id);
+
+				int32_t data_len = static_cast<int32_t>(outputs.size());
+				if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
+				{
+					std::cerr << "[IPC] ERROR: Output data size (" << data_len
+						<< ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
+						<< "). Truncating output." << std::endl;
+					data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
+				}
+
+				pSharedMem->output_count = data_len;
+				if (data_len > 0)
+				{
+					memcpy(pSharedMem->output_ids, outputs.data(), data_len * sizeof(int32_t));
+				}
+
+				pSharedMem->output_ready = 1;
+				SetEvent(hOutputEvent);
+			}
 		}
-		if (pSharedMem->shutdown != 0)
-			break;
-
-		int input_id = pSharedMem->input_id;
-		pSharedMem->input_ready = 0;
-
-		auto outputs = run_simulation_cycle(input_id);
-
-		int32_t data_len = static_cast<int32_t>(outputs.size());
-		if (data_len > IPC_MAX_OUTPUT_IDS_PER_SET)
-		{
-			std::cerr << "[IPC] ERROR: Output data size (" << data_len
-					  << ") exceeds IPC_MAX_OUTPUT_IDS_PER_SET (" << IPC_MAX_OUTPUT_IDS_PER_SET
-					  << "). Truncating output.\n";
-			data_len = IPC_MAX_OUTPUT_IDS_PER_SET;
-		}
-
-		pSharedMem->output_count = data_len;
-		if (data_len > 0)
-		{
-			memcpy(pSharedMem->output_ids, outputs.data(), data_len * sizeof(int32_t));
-		}
-
-		pSharedMem->output_ready = 1;
-		WakeByAddressAll((PVOID)&pSharedMem->output_ready);
 	}
 
 	cleanup_ipc();
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	std::string mode = "console";
 	if (argc > 1 && std::string(argv[1]) == "--ipc")
