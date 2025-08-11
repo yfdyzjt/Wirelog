@@ -10,7 +10,7 @@ using Terraria.ModLoader;
 
 namespace Wirelog
 {
-    public static class VerilogSimulator
+    public static partial class VerilogSimulator
     {
         private const string SharedMemName = "TerrariaWiringSim_SharedMem";
 
@@ -168,7 +168,14 @@ namespace Wirelog
             Main.NewText("Verilog simulator disconnected.");
         }
 
-        public static List<int> SendInputAndWaitForOutput(int inputPortId)
+        [LibraryImport("api-ms-win-core-synch-l1-2-0.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static unsafe partial bool WaitOnAddress(void* Address, void* CompareAddress, IntPtr AddressSize, int dwMilliseconds);
+
+        [LibraryImport("api-ms-win-core-synch-l1-2-0.dll", SetLastError = true)]
+        private static unsafe partial void WakeByAddressAll(void* Address);
+
+        public static unsafe List<int> SendInputAndWaitForOutput(int inputPortId)
         {
             if (_accessor == null)
             {
@@ -184,28 +191,31 @@ namespace Wirelog
 
             try
             {
-                int seq = _accessor.ReadInt32(InputSequenceOffset);
-                seq = unchecked(seq + 1);
-                _accessor.Write(OutputReadyOffset, 0);
-                _accessor.Write(InputIdOffset, inputPortId);
-                _accessor.Write(InputReadyOffset, 1);
-                _accessor.Write(InputSequenceOffset, seq);
+                byte* basePtr = null;
+                _accessor.SafeMemoryMappedViewHandle.AcquirePointer(ref basePtr);
 
-                var sw = new SpinWait();
-                var start = Environment.TickCount;
-                while (true)
+                try
                 {
-                    int ready = _accessor.ReadInt32(OutputReadyOffset);
-                    if (ready != 0) break;
-                    int shutdown = _accessor.ReadInt32(ShutdownOffset);
-                    if (shutdown != 0) return [];
+                    int seq = _accessor.ReadInt32(InputSequenceOffset);
+                    seq = unchecked(seq + 1);
+                    _accessor.Write(OutputReadyOffset, 0);
+                    _accessor.Write(InputIdOffset, inputPortId);
+                    _accessor.Write(InputSequenceOffset, seq);
+                    _accessor.Write(InputReadyOffset, 1);
 
-                    if (Environment.TickCount - start > 1000)
+                    WakeByAddressAll(basePtr + InputReadyOffset);
+
+                    int expectedOutputReady = 0;
+                    if (!WaitOnAddress(basePtr + OutputReadyOffset, &expectedOutputReady, (IntPtr)sizeof(int), 1000))
                     {
+                        if (_accessor.ReadInt32(ShutdownOffset) != 0) return [];
                         Main.NewText("Timeout waiting for simulator output.");
                         return [];
                     }
-                    sw.SpinOnce();
+                }
+                finally
+                {
+                    _accessor.SafeMemoryMappedViewHandle.ReleasePointer();
                 }
 
                 int count = _accessor.ReadInt32(OutputCountOffset);
@@ -218,7 +228,6 @@ namespace Wirelog
                 }
 
                 _accessor.Write(OutputReadyOffset, 0);
-                _accessor.Write(InputReadyOffset, 0);
 
                 return outputIds;
             }
