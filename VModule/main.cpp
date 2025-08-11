@@ -24,7 +24,7 @@ constexpr auto MAX_CYCLE_COUNT = 1000;
 constexpr auto SHARED_MEM_NAME = "TerrariaWiringSim_SharedMem";
 constexpr auto IPC_MAX_OUTPUT_IDS_PER_SET = 65536;
 
-constexpr auto LOG_INTERVAL = 1000;
+// constexpr auto LOG_INTERVAL = 1000;
 
 static VWiring *top;
 
