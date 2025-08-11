@@ -39,75 +39,7 @@ namespace Wirelog
                     Tile tile = Main.tile[pos];
                     if (tile == null || !tile.HasTile) continue;
 
-                    if (Input.TryGetType(tile, out var inputType))
-                    {
-                        bool hasWire = false;
-                        var (sizeX, sizeY) = Input.GetSize(inputType);
-                        for (int i = 0; i < sizeX; i++)
-                        {
-                            for (int j = 0; j < sizeY; j++)
-                            {
-                                var curPos = new Point16(x + i, y + j);
-                                Input.TryGetType(Main.tile[curPos], out var curInputType);
-                                if (curInputType == inputType)
-                                {
-                                    visitedTiles.Add(curPos);
-                                    if (Wire.HasWire(curPos)) hasWire = true;
-                                }
-                            }
-                        }
-                        if (hasWire)
-                        {
-                            var input = new Input { Type = inputType, Pos = pos };
-                            for (int i = 0; i < sizeX; i++)
-                            {
-                                for (int j = 0; j < sizeY; j++)
-                                {
-                                    var curPos = new Point16(x + i, y + j);
-                                    Input.TryGetType(Main.tile[curPos], out var curInputType);
-                                    if (Wire.HasWire(curPos) && curInputType == inputType)
-                                    {
-                                        _inputsFound.Add(curPos, input);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else if (Output.TryGetType(tile, out var outputType))
-                    {
-                        bool hasWire = false;
-                        var (sizeX, sizeY) = Output.GetSize(outputType);
-                        for (int i = 0; i < sizeX; i++)
-                        {
-                            for (int j = 0; j < sizeY; j++)
-                            {
-                                var curPos = new Point16(x + i, y + j);
-                                Output.TryGetType(Main.tile[curPos], out var curOutputType);
-                                if (curOutputType == outputType)
-                                {
-                                    visitedTiles.Add(curPos);
-                                    if (Wire.HasWire(curPos)) hasWire = true;
-                                }
-                            }
-                        }
-                        if (hasWire)
-                        {
-                            var output = new Output { Type = outputType, Pos = pos };
-                            for (int i = 0; i < sizeX; i++)
-                            {
-                                for (int j = 0; j < sizeY; j++)
-                                {
-                                    var curPos = new Point16(x + i, y + j);
-                                    Output.TryGetType(Main.tile[curPos], out var curOutputType);
-                                    if (Wire.HasWire(curPos) && curOutputType == outputType)
-                                    {
-                                        _outputsFound.Add(curPos, output);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else if (Gate.TryGetType(tile, out var gateType))
+                    if (Gate.TryGetType(tile, out var gateType))
                     {
                         visitedTiles.Add(pos);
                         _gatesFound.Add(pos, new Gate { Type = gateType, Pos = pos });
@@ -116,6 +48,77 @@ namespace Wirelog
                     {
                         visitedTiles.Add(pos);
                         _lampsFound.Add(pos, new Lamp { Type = lampType, Pos = pos });
+                    }
+                    else
+                    {
+                        if (Input.TryGetType(tile, out var inputType))
+                        {
+                            bool hasWire = false;
+                            var (sizeX, sizeY) = Input.GetSize(inputType);
+                            for (int i = 0; i < sizeX; i++)
+                            {
+                                for (int j = 0; j < sizeY; j++)
+                                {
+                                    var curPos = new Point16(x + i, y + j);
+                                    Input.TryGetType(Main.tile[curPos], out var curInputType);
+                                    if (curInputType == inputType)
+                                    {
+                                        visitedTiles.Add(curPos);
+                                        if (Wire.HasWire(curPos)) hasWire = true;
+                                    }
+                                }
+                            }
+                            if (hasWire)
+                            {
+                                var input = new Input { Type = inputType, Pos = pos };
+                                for (int i = 0; i < sizeX; i++)
+                                {
+                                    for (int j = 0; j < sizeY; j++)
+                                    {
+                                        var curPos = new Point16(x + i, y + j);
+                                        Input.TryGetType(Main.tile[curPos], out var curInputType);
+                                        if (Wire.HasWire(curPos) && curInputType == inputType)
+                                        {
+                                            _inputsFound.Add(curPos, input);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (Output.TryGetType(tile, out var outputType))
+                        {
+                            bool hasWire = false;
+                            var (sizeX, sizeY) = Output.GetSize(outputType);
+                            for (int i = 0; i < sizeX; i++)
+                            {
+                                for (int j = 0; j < sizeY; j++)
+                                {
+                                    var curPos = new Point16(x + i, y + j);
+                                    Output.TryGetType(Main.tile[curPos], out var curOutputType);
+                                    if (curOutputType == outputType)
+                                    {
+                                        visitedTiles.Add(curPos);
+                                        if (Wire.HasWire(curPos)) hasWire = true;
+                                    }
+                                }
+                            }
+                            if (hasWire)
+                            {
+                                var output = new Output { Type = outputType, Pos = pos };
+                                for (int i = 0; i < sizeX; i++)
+                                {
+                                    for (int j = 0; j < sizeY; j++)
+                                    {
+                                        var curPos = new Point16(x + i, y + j);
+                                        Output.TryGetType(Main.tile[curPos], out var curOutputType);
+                                        if (Wire.HasWire(curPos) && curOutputType == outputType)
+                                        {
+                                            _outputsFound.Add(curPos, output);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -304,25 +307,28 @@ namespace Wirelog
                     _gatesFound.Remove(curPos);
                 }
             }
-            else if (_inputsFound.TryGetValue(curPos, out var foundInput))
+            else
             {
-                if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
+                if (_inputsFound.TryGetValue(curPos, out var foundInput))
                 {
-                    foundInput.InputPort ??= new InputPort();
-                    foundInput.InputPort.Inputs.Add(foundInput);
-                    foundInput.InputPort.OutputWires.Add(wire);
-                    wire.InputPorts.Add(foundInput.InputPort);
+                    if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
+                    {
+                        foundInput.InputPort ??= new InputPort();
+                        foundInput.InputPort.Inputs.Add(foundInput);
+                        foundInput.InputPort.OutputWires.Add(wire);
+                        wire.InputPorts.Add(foundInput.InputPort);
+                    }
                 }
-            }
-            else if (_outputsFound.TryGetValue(curPos, out var foundOutput))
-            {
-                if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
+                if (_outputsFound.TryGetValue(curPos, out var foundOutput))
                 {
-                    var outputPort = new OutputPort();
-                    foundOutput.OutputPorts.Add(outputPort);
-                    outputPort.Output = foundOutput;
-                    wire.OutputPorts.Add(outputPort);
-                    outputPort.InputWire = wire;
+                    if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
+                    {
+                        var outputPort = new OutputPort();
+                        foundOutput.OutputPorts.Add(outputPort);
+                        outputPort.Output = foundOutput;
+                        wire.OutputPorts.Add(outputPort);
+                        outputPort.InputWire = wire;
+                    }
                 }
             }
         }
