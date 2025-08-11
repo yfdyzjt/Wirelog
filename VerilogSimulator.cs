@@ -166,12 +166,11 @@ namespace Wirelog
             Main.NewText("Verilog simulator disconnected.");
         }
 
-        [LibraryImport("API-MS-Win-Core-Synch-l1-2-0.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static unsafe partial bool WaitOnAddress(void* Address, void* CompareAddress, IntPtr AddressSize, int dwMilliseconds);
+        [LibraryImport("kernelbase.dll", SetLastError = true)]
+        private static unsafe partial int WaitOnAddress(int* address, int* compareAddress, int addressSize, int dwMilliseconds);
 
-        [LibraryImport("API-MS-Win-Core-Synch-l1-2-0.dll", SetLastError = true)]
-        private static unsafe partial void WakeByAddressAll(void* Address);
+        [LibraryImport("kernelbase.dll", SetLastError = true)]
+        private static unsafe partial void WakeByAddressAll(int* address);
 
         public static unsafe List<int> SendInputAndWaitForOutput(int inputPortId)
         {
@@ -198,10 +197,11 @@ namespace Wirelog
                     _accessor.Write(InputIdOffset, inputPortId);
                     _accessor.Write(InputReadyOffset, 1);
 
-                    WakeByAddressAll(basePtr + InputReadyOffset);
+                    WakeByAddressAll((int*)((long)basePtr + InputReadyOffset));
 
                     int expectedOutputReady = 0;
-                    if (!WaitOnAddress(basePtr + OutputReadyOffset, &expectedOutputReady, sizeof(int), 1000))
+                    int result = WaitOnAddress((int*)((long)basePtr + OutputReadyOffset), &expectedOutputReady, sizeof(int), 1000);
+                    if (result is 0 or 258)
                     {
                         if (_accessor.ReadInt32(ShutdownOffset) != 0) return [];
                         Main.NewText("Timeout waiting for simulator output.");
