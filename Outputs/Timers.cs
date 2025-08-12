@@ -22,6 +22,7 @@ namespace Wirelog.Outputs
                 input.Pos == output.Pos)))
                 {
                     Link.Remove(outputPort);
+                    // Two inputs cause pruning bug.
                 }
             }
         }

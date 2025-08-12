@@ -214,7 +214,7 @@ namespace Wirelog
 
         private static void MergeOutputPorts()
         {
-
+            // Merge all output ports that have same input. 
         }
 
         private static void MergeInputPorts()

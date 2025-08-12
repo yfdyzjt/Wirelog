@@ -101,6 +101,7 @@ namespace Wirelog.Outputs
                         teleporterMap.Add(outputPort, maxOutput.Pos);
                     }
                     // Need to add copy of same input port but with different teleporter.
+                    // Two inputs cause pruning bug.
                 }
                 else
                 {

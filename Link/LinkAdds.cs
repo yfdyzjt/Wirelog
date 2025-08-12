@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace Wirelog
 {
@@ -9,7 +9,7 @@ namespace Wirelog
             var result = true;
             foreach (var wire in wires)
             {
-                result &= Remove(wire, lamp);
+                result &= Add(wire, lamp);
             }
             return result;
         }
