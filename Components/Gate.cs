@@ -10,8 +10,8 @@ namespace Wirelog
         public int Id { get; set; }
         public GateType Type { get; set; }
         public Point16 Pos { get; set; }
-        public HashSet<Lamp> InputLamps { get; } = [];
-        public HashSet<Wire> OutputWires { get; } = [];
+        public HashSet<Lamp> Lamps { get; } = [];
+        public HashSet<Wire> Wires { get; } = [];
         public static bool TryGetType(Tile tile, out GateType type)
         {
             if (tile == null || !tile.HasTile) { type = GateType.None; return false; }

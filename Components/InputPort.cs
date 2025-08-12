@@ -6,6 +6,6 @@ namespace Wirelog
     {
         public int Id { get; set; }
         public HashSet<Input> Inputs { get; } = [];
-        public HashSet<Wire> OutputWires { get; } = [];
+        public HashSet<Wire> Wires { get; } = [];
     }
 }

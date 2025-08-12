@@ -49,12 +49,12 @@ namespace Wirelog.Outputs
                                 if (Converter.InputsFound.TryGetValue(pos, out var input))
                                 {
                                     outputPort = output.OutputPorts.Where(o =>
-                                    o.InputWire.InputPorts.FirstOrDefault()?.Inputs.Any(i => i == input) == true).FirstOrDefault();
+                                    o.Wire.InputPorts.FirstOrDefault()?.Inputs.Any(i => i == input) == true).FirstOrDefault();
                                 }
                                 else if (Converter.GatesFound.TryGetValue(pos, out var gate))
                                 {
                                     outputPort = output.OutputPorts.Where(o =>
-                                    o.InputWire.Gates.FirstOrDefault() == gate).FirstOrDefault();
+                                    o.Wire.Gates.FirstOrDefault() == gate).FirstOrDefault();
                                 }
                                 if (outputPort != null)
                                 {
@@ -100,13 +100,11 @@ namespace Wirelog.Outputs
                     {
                         teleporterMap.Add(outputPort, maxOutput.Pos);
                     }
+                    // Need to add copy of same input port but with different teleporter.
                 }
                 else
                 {
-                    output.OutputPorts.Remove(outputPort);
-                    outputPort.Output = null;
-                    outputPort.InputWire?.OutputPorts.Remove(outputPort);
-                    outputPort.InputWire = null;
+                    Link.Remove(outputPort);
                 }
             }
 

@@ -58,7 +58,7 @@ namespace Wirelog.Outputs
             var outputPortColorMap = new Dictionary<OutputPort, WireType>();
             foreach (var outputPort in output.OutputPorts)
             {
-                outputPortColorMap.Add(outputPort, outputPort.InputWire.Type);
+                outputPortColorMap.Add(outputPort, outputPort.Wire.Type);
             }
             Output.AdditionalData.Add(output.Pos, outputPortColorMap);
         }

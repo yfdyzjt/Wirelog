@@ -73,13 +73,13 @@ namespace Wirelog
 
         private static string GetInputPortMoudleString(InputPort inputPort)
         {
-            var moduleType = GetModuleTypeString(inputPort.OutputWires.Count);
+            var moduleType = GetModuleTypeString(inputPort.Wires.Count);
             var parameters = new List<string>();
-            if (moduleType == "Multi") parameters.Add($".OUTPUT_COUNT({inputPort.OutputWires.Count})");
+            if (moduleType == "Multi") parameters.Add($".OUTPUT_COUNT({inputPort.Wires.Count})");
             var parameterString = BuildParameterString(parameters);
             var moduleName = $"Input_{moduleType}{parameterString}";
 
-            var outputWires = GetWireNames(inputPort.OutputWires);
+            var outputWires = GetWireNames(inputPort.Wires);
             var connections = $".in(in[{inputPort.Id}]), .out({outputWires})";
 
             return BuildModuleInstanceString(moduleName, "i", inputPort.Id.ToString(), connections);
@@ -87,19 +87,19 @@ namespace Wirelog
 
         private static string GetOutputPortMoudleString(OutputPort outputPort)
         {
-            var connections = $".clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.InputWire.Id}]), .out(out[{outputPort.Id}])";
+            var connections = $".clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.Wire.Id}]), .out(out[{outputPort.Id}])";
             return BuildModuleInstanceString("Output_Single", "o", outputPort.Id.ToString(), connections);
         }
 
         private static string GetLampMoudleString(Lamp lamp)
         {
-            var moduleType = GetModuleTypeString(lamp.InputWires.Count);
+            var moduleType = GetModuleTypeString(lamp.Wires.Count);
             var parameters = new List<string>();
-            if (moduleType == "Multi") parameters.Add($".INPUT_COUNT({lamp.InputWires.Count})");
+            if (moduleType == "Multi") parameters.Add($".INPUT_COUNT({lamp.Wires.Count})");
             var parameterString = BuildParameterString(parameters);
             var moduleName = $"Lamp_{moduleType}_{lamp.Type}{parameterString}";
 
-            var inputWires = GetWireNames(lamp.InputWires);
+            var inputWires = GetWireNames(lamp.Wires);
             var clockReset = lamp.Type == LampType.Fault ? ".clk(clk)" : ".clk(clk), .reset(reset)";
             var connections = $"{clockReset}, .in({inputWires}), .out(lamps[{lamp.Id}])";
 
@@ -108,13 +108,13 @@ namespace Wirelog
 
         private static string GetGateMoudleString(Gate gate)
         {
-            var inputType = GetModuleTypeString(gate.Type == GateType.Fault ? gate.InputLamps.Count - 1 : gate.InputLamps.Count);
-            var outputType = GetModuleTypeString(gate.OutputWires.Count);
+            var inputType = GetModuleTypeString(gate.Type == GateType.Fault ? gate.Lamps.Count - 1 : gate.Lamps.Count);
+            var outputType = GetModuleTypeString(gate.Wires.Count);
 
             var randSeed = Main.rand.Next(1, 0xFFF);
             var parameters = new List<string>();
-            if (inputType == "Multi") parameters.Add($".INPUT_COUNT({(gate.Type == GateType.Fault ? gate.InputLamps.Count - 1 : gate.InputLamps.Count)})");
-            if (outputType == "Multi") parameters.Add($".OUTPUT_COUNT({gate.OutputWires.Count})");
+            if (inputType == "Multi") parameters.Add($".INPUT_COUNT({(gate.Type == GateType.Fault ? gate.Lamps.Count - 1 : gate.Lamps.Count)})");
+            if (outputType == "Multi") parameters.Add($".OUTPUT_COUNT({gate.Wires.Count})");
             if (gate.Type == GateType.Fault && inputType == "Multi") parameters.Add($".RAND_SEED({randSeed})");
             var parameterString = BuildParameterString(parameters);
 
@@ -123,17 +123,17 @@ namespace Wirelog
                 $"Gate_{inputType}_{outputType}_{gate.Type}{parameterString}";
 
             var connections = "";
-            var outputWires = GetWireNames(gate.OutputWires);
+            var outputWires = GetWireNames(gate.Wires);
             if (gate.Type == GateType.Fault)
             {
-                var inputLamps = GetLampNames(gate.InputLamps.Where(gate => gate.Type != LampType.Fault).ToHashSet());
-                var inputFaultLamp = GetLampNames([gate.InputLamps.First(gate => gate.Type == LampType.Fault)]);
+                var inputLamps = GetLampNames(gate.Lamps.Where(gate => gate.Type != LampType.Fault).ToHashSet());
+                var inputFaultLamp = GetLampNames([gate.Lamps.First(gate => gate.Type == LampType.Fault)]);
                 var clockReset = inputType == "Multi" ? ".clk(clk), .reset(reset), .logic_reset(logic_reset)" : ".clk(clk), .logic_reset(logic_reset)";
                 connections = $"{clockReset}, .in({inputLamps}), .fault_in({inputFaultLamp}), .out({outputWires})";
             }
             else
             {
-                var inputLamps = GetLampNames(gate.InputLamps);
+                var inputLamps = GetLampNames(gate.Lamps);
                 connections = $".clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .out({outputWires})";
             }
             return BuildModuleInstanceString(moduleName, "g", gate.Id.ToString(), connections);

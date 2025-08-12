@@ -112,13 +112,17 @@ namespace Wirelog.Outputs
         public static void Postprocess(Output output)
         {
             var tile = Main.tile[output.Pos];
-            if (tile.TileType == TileID.OutletPump) return;
+            if (tile.TileType == TileID.OutletPump)
+            {
+                Link.Remove(output);
+                return;
+            }
 
             var pumpMap = new Dictionary<OutputPort, HashSet<OutputPort>>();
             foreach (var inletPump in output.OutputPorts)
             {
                 HashSet<OutputPort> outletPumps = [];
-                foreach (var outletPump in inletPump.InputWire.OutputPorts.Where(o =>
+                foreach (var outletPump in inletPump.Wire.OutputPorts.Where(o =>
                 Main.tile[o.Output.Pos].TileType == TileID.OutletPump))
                 {
                     outletPumps.Add(outletPump);

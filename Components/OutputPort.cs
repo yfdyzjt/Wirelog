@@ -3,7 +3,7 @@
     public class OutputPort
     {
         public int Id { get; set; }
-        public Wire InputWire { get; set; }
+        public Wire Wire { get; set; }
         public Output Output { get; set; }
     }
 }

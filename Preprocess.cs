@@ -281,8 +281,7 @@ namespace Wirelog
             {
                 if (TraceGate(foundLamp, out var foundGate))
                 {
-                    foundLamp.InputWires.Add(wire);
-                    wire.Lamps.Add(foundLamp);
+                    Link.Add(wire, foundLamp);
                 }
                 else
                 {
@@ -293,14 +292,8 @@ namespace Wirelog
             {
                 if (TraceLamp(foundGate, out var foundLamps))
                 {
-                    foundGate.OutputWires.Add(wire);
-                    wire.Gates.Add(foundGate);
-
-                    foreach (var lamp in foundLamps)
-                    {
-                        lamp.OutputGate = foundGate;
-                        foundGate.InputLamps.Add(lamp);
-                    }
+                    Link.Add(wire, foundGate);
+                    Link.Add(foundLamps, foundGate);
                 }
                 else
                 {
@@ -313,10 +306,9 @@ namespace Wirelog
                 {
                     if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
                     {
-                        foundInput.InputPort ??= new InputPort();
-                        foundInput.InputPort.Inputs.Add(foundInput);
-                        foundInput.InputPort.OutputWires.Add(wire);
-                        wire.InputPorts.Add(foundInput.InputPort);
+                        var inputPort = foundInput.InputPort ?? new InputPort();
+                        Link.Add(foundInput, inputPort);
+                        Link.Add(wire, inputPort);
                     }
                 }
                 if (_outputsFound.TryGetValue(curPos, out var foundOutput))
@@ -324,10 +316,8 @@ namespace Wirelog
                     if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
                     {
                         var outputPort = new OutputPort();
-                        foundOutput.OutputPorts.Add(outputPort);
-                        outputPort.Output = foundOutput;
-                        wire.OutputPorts.Add(outputPort);
-                        outputPort.InputWire = wire;
+                        Link.Add(foundOutput, outputPort);
+                        Link.Add(wire, outputPort);
                     }
                 }
             }
@@ -335,7 +325,7 @@ namespace Wirelog
 
         private static bool TraceGate(Lamp lamp, out Gate outGate)
         {
-            if (lamp.OutputGate == null)
+            if (lamp.Gate == null)
             {
                 for (int y = 1; ; y++)
                 {
@@ -354,7 +344,7 @@ namespace Wirelog
             }
             else
             {
-                outGate = lamp.OutputGate;
+                outGate = lamp.Gate;
                 return true;
             }
         }

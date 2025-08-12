@@ -18,6 +18,8 @@ namespace Wirelog
             MergeInputPorts();
             Main.statusText = $"copy multi input wires and output ports";
             CopyMultiInputWiresAndOutputPorts();
+            Main.statusText = $"merge output ports";
+            MergeOutputPorts();
             Main.statusText = $"postprocess outputs";
             PostprocessOutput();
             PruneUnusedComponents();
@@ -43,47 +45,31 @@ namespace Wirelog
                 foreach (var gate in curWire.Gates)
                 {
                     var newWire = new Wire() { Type = curWire.Type };
-                    gate.OutputWires.Add(newWire);
-                    newWire.Gates.Add(gate);
-                    gate.OutputWires.Remove(curWire);
-                    curWire.Gates.Remove(gate);
+                    Link.Add(newWire, gate);
+                    Link.Remove(curWire, gate);
                     newWires.Add(newWire);
                 }
                 foreach (var inputPort in curWire.InputPorts)
                 {
                     var newWire = new Wire() { Type = curWire.Type };
-                    inputPort.OutputWires.Add(newWire);
-                    newWire.InputPorts.Add(inputPort);
-                    inputPort.OutputWires.Remove(curWire);
-                    curWire.InputPorts.Remove(inputPort);
+                    Link.Add(newWire, inputPort);
+                    Link.Remove(curWire, inputPort);
                     newWires.Add(newWire);
                 }
                 foreach (var lamp in curWire.Lamps)
                 {
-                    foreach (var newWire in newWires)
-                    {
-                        newWire.Lamps.Add(lamp);
-                        lamp.InputWires.Add(newWire);
-                    }
-                    curWire.Lamps.Remove(lamp);
-                    lamp.InputWires.Remove(curWire);
+                    Link.Add(newWires, lamp);
+                    Link.Remove(curWire, lamp);
                 }
                 foreach (var outputPort in curWire.OutputPorts)
                 {
                     foreach (var newWire in newWires)
                     {
-                        var newOutputPort = new OutputPort
-                        {
-                            InputWire = newWire,
-                            Output = outputPort.Output
-                        };
-                        newWire.OutputPorts.Add(newOutputPort);
-                        outputPort.Output.OutputPorts.Add(newOutputPort);
+                        var newOutputPort = new OutputPort();
+                        Link.Add(newWire, newOutputPort);
+                        Link.Add(outputPort.Output, newOutputPort);
                     }
-                    curWire.OutputPorts.Remove(outputPort);
-                    outputPort.InputWire = null;
-                    outputPort.Output.OutputPorts.Remove(outputPort);
-                    outputPort.Output = null;
+                    Link.Remove(outputPort);
                 }
                 _wires.AddRange(newWires);
                 _wires.Remove(curWire);
@@ -136,27 +122,17 @@ namespace Wirelog
             var faultGates = _gatesFound.Where(posGate => posGate.Value.Type == GateType.Fault);
             foreach (var posFaultGate in faultGates)
             {
-                var lamps = posFaultGate.Value.InputLamps.OrderByDescending(l => l.Pos.Y);
+                var lamps = posFaultGate.Value.Lamps.OrderByDescending(l => l.Pos.Y);
                 var faultLamp = lamps.First(l => l.Type == LampType.Fault);
                 foreach (var lamp in lamps)
                 {
                     if (lamp.Pos.Y < faultLamp.Pos.Y)
                     {
-                        posFaultGate.Value.InputLamps.Remove(lamp);
-                        lamp.OutputGate = null;
                         if (lamp.Type == LampType.Fault)
                         {
-                            foreach (var wire in lamp.InputWires)
-                            {
-                                wire.Lamps.Add(faultLamp);
-                                faultLamp.InputWires.Add(wire);
-                            }
+                            Link.Add(lamp.Wires, faultLamp);
                         }
-                        foreach (var wire in lamp.InputWires)
-                        {
-                            wire.Lamps.Remove(lamp);
-                            lamp.InputWires.Remove(wire);
-                        }
+                        Link.Remove(lamp);
                         _lampsFound.Remove(lamp.Pos);
                     }
                 }
@@ -178,12 +154,11 @@ namespace Wirelog
 
         private static bool PruneUnusedInputs()
         {
-            var inputsToRemove = _inputsFound.Where(posInput => posInput.Value.InputPort == null || posInput.Value.InputPort.OutputWires.Count == 0).ToHashSet();
+            var inputsToRemove = _inputsFound.Where(posInput => posInput.Value.InputPort == null || posInput.Value.InputPort.Wires.Count == 0).ToHashSet();
             if (inputsToRemove.Count == 0) return false;
             foreach (var posInput in inputsToRemove)
             {
-                posInput.Value.InputPort?.Inputs.Remove(posInput.Value);
-                posInput.Value.InputPort = null;
+                Link.Remove(posInput.Value);
                 _inputsFound.Remove(posInput.Key);
             }
             return true;
@@ -191,15 +166,11 @@ namespace Wirelog
 
         private static bool PruneUnusedOutputs()
         {
-            var outputsToRemove = _outputsFound.Where(posOutput => posOutput.Value.OutputPorts.Count == 0 || posOutput.Value.OutputPorts.Any(outputPort => outputPort.InputWire == null)).ToHashSet();
+            var outputsToRemove = _outputsFound.Where(posOutput => posOutput.Value.OutputPorts.Count == 0 || posOutput.Value.OutputPorts.Any(outputPort => outputPort.Wire == null)).ToHashSet();
             if (outputsToRemove.Count == 0) return false;
             foreach (var posOutput in outputsToRemove)
             {
-                foreach (var outputPort in posOutput.Value.OutputPorts)
-                {
-                    outputPort.Output.OutputPorts.Remove(outputPort);
-                }
-                posOutput.Value.OutputPorts.Clear();
+                Link.Remove(posOutput.Value);
                 _outputsFound.Remove(posOutput.Key);
             }
             return true;
@@ -207,14 +178,11 @@ namespace Wirelog
 
         private static bool PruneUnusedGates()
         {
-            var gatesToRemove = _gatesFound.Values.Where(gate => gate.InputLamps.Count == 0 || gate.OutputWires.Count == 0).ToHashSet();
+            var gatesToRemove = _gatesFound.Values.Where(gate => gate.Lamps.Count == 0 || gate.Wires.Count == 0).ToHashSet();
             if (gatesToRemove.Count == 0) return false;
             foreach (var gate in gatesToRemove)
             {
-                foreach (var wire in gate.OutputWires)
-                    wire.Gates.Remove(gate);
-                foreach (var lamp in gate.InputLamps)
-                    lamp.OutputGate = null;
+                Link.Remove(gate);
                 _gatesFound.Remove(gate.Pos);
             }
             return true;
@@ -222,12 +190,11 @@ namespace Wirelog
 
         private static bool PruneUnusedLamps()
         {
-            var lampsToRemove = _lampsFound.Values.Where(lamp => lamp.OutputGate == null).ToHashSet();
+            var lampsToRemove = _lampsFound.Values.Where(lamp => lamp.Gate == null).ToHashSet();
             if (lampsToRemove.Count == 0) return false;
             foreach (var lamp in lampsToRemove)
             {
-                foreach (var wire in lamp.InputWires)
-                    wire.Lamps.Remove(lamp);
+                Link.Remove(lamp);
                 _lampsFound.Remove(lamp.Pos);
             }
             return true;
@@ -239,13 +206,15 @@ namespace Wirelog
             if (wiresToRemove.Count == 0) return false;
             foreach (var wire in wiresToRemove)
             {
-                foreach (var gate in wire.Gates)
-                    gate.OutputWires.Remove(wire);
-                foreach (var inputPort in wire.InputPorts)
-                    inputPort.OutputWires.Remove(wire);
+                Link.Remove(wire);
                 _wires.Remove(wire);
             }
             return true;
+        }
+
+        private static void MergeOutputPorts()
+        {
+
         }
 
         private static void MergeInputPorts()
@@ -254,7 +223,7 @@ namespace Wirelog
 
             foreach (var input in _inputsFound.Values)
             {
-                var key = string.Join(",", input.InputPort.OutputWires.Select(w => w.GetHashCode()).Order());
+                var key = string.Join(",", input.InputPort.Wires.Select(w => w.GetHashCode()).Order());
                 var inputPorts = inputPortGroups.GetValueOrDefault(key) ?? [];
                 inputPorts.Add(input.InputPort);
                 inputPortGroups[key] = inputPorts;
@@ -270,16 +239,13 @@ namespace Wirelog
                     var inputPortToMerge = group[i];
                     foreach (var input in inputPortToMerge.Inputs)
                     {
-                        primaryInputport.Inputs.Add(input);
-                        inputPortToMerge.Inputs.Remove(input);
-                        input.InputPort = primaryInputport;
+                        Link.Remove(input, inputPortToMerge);
+                        Link.Add(input, primaryInputport);
                     }
-                    foreach (var wire in inputPortToMerge.OutputWires)
+                    foreach (var wire in inputPortToMerge.Wires)
                     {
-                        primaryInputport.OutputWires.Add(wire);
-                        inputPortToMerge.OutputWires.Remove(wire);
-                        wire.InputPorts.Add(primaryInputport);
-                        wire.InputPorts.Remove(inputPortToMerge);
+                        Link.Remove(wire, inputPortToMerge);
+                        Link.Add(wire, primaryInputport);
                     }
                 }
             }

@@ -41,40 +41,20 @@ namespace Wirelog
             _wires.Clear();
             _inputPorts = null;
             _outputPorts = null;
+
             InputsPortFound.Clear();
         }
 
         private static void PostClear()
         {
-            foreach (var wire in _wires)
-            {
-                wire.InputPorts.Clear();
-                wire.OutputPorts.Clear();
-                wire.Gates.Clear();
-                wire.Lamps.Clear();
-            }
-            foreach (var lamp in _lampsFound.Values)
-            {
-                lamp.OutputGate = null;
-                lamp.InputWires.Clear();
-            }
-            foreach (var gate in _gatesFound.Values)
-            {
-                gate.InputLamps.Clear();
-                gate.OutputWires.Clear();
-            }
-            foreach (var inputPort in _inputPorts)
-            {
-                inputPort.OutputWires.Clear();
-            }
-            foreach (var outputPort in _outputPorts)
-            {
-                outputPort.InputWire = null;
-            }
-            _outputsFound.Clear();
-            _gatesFound.Clear();
-            _lampsFound.Clear();
+            Link.Remove(_wires);
             _wires.Clear();
+            Link.Remove(_lampsFound.Values);
+            _lampsFound.Clear();
+            Link.Remove(_gatesFound.Values);
+            _gatesFound.Clear();
+
+            _outputsFound.Clear();
             _inputPorts = null;
         }
     }

@@ -26,13 +26,13 @@ namespace Wirelog.Outputs
 
             foreach (var outpotPort in output.OutputPorts)
             {
-                if (outpotPort.InputWire.Gates.Count != 0)
+                if (outpotPort.Wire.Gates.Count != 0)
                 {
-                    linkGates.Add(outpotPort.InputWire.Gates.First());
+                    linkGates.Add(outpotPort.Wire.Gates.First());
                 }
-                else if (outpotPort.InputWire.InputPorts.Count != 0)
+                else if (outpotPort.Wire.InputPorts.Count != 0)
                 {
-                    linkInputPorts.Add(outpotPort.InputWire.InputPorts.First());
+                    linkInputPorts.Add(outpotPort.Wire.InputPorts.First());
                 }
             }
 
@@ -57,26 +57,26 @@ namespace Wirelog.Outputs
             foreach (var gate in doubleDirGates)
             {
                 var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.InputWire.Gates.Contains(gate)).ToHashSet();
+                outputPort.Wire.Gates.Contains(gate)).ToHashSet();
                 AddNewOutputPort(outputPorts);
             }
             foreach (var inputPort in doubleDirInputPorts)
             {
                 var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.InputWire.InputPorts.Contains(inputPort)).ToHashSet();
+                outputPort.Wire.InputPorts.Contains(inputPort)).ToHashSet();
                 AddNewOutputPort(outputPorts);
             }
             foreach (var gate in singleDirGates)
             {
                 var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.InputWire.Gates.Contains(gate)).ToHashSet();
-                RemoveOutputPort(outputPorts);
+                outputPort.Wire.Gates.Contains(gate)).ToHashSet();
+                Link.Remove(outputPorts);
             }
             foreach (var inputPort in singleDirInputPorts)
             {
                 var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.InputWire.InputPorts.Contains(inputPort)).ToHashSet();
-                RemoveOutputPort(outputPorts);
+                outputPort.Wire.InputPorts.Contains(inputPort)).ToHashSet();
+                Link.Remove(outputPorts);
             }
         }
 
@@ -112,28 +112,13 @@ namespace Wirelog.Outputs
                 });
         }
 
-        private static void RemoveOutputPort(IEnumerable<OutputPort> outputPorts)
-        {
-            foreach (var outputPort in outputPorts)
-            {
-                outputPort.Output.OutputPorts.Remove(outputPort);
-                outputPort.Output = null;
-                outputPort.InputWire.OutputPorts.Remove(outputPort);
-                outputPort.InputWire = null;
-            }
-        }
-
         private static void AddNewOutputPort(IEnumerable<OutputPort> outputPorts)
         {
             var firstOutputPort = outputPorts.First();
-            var newOutputPort = new OutputPort()
-            {
-                InputWire = firstOutputPort.InputWire,
-                Output = firstOutputPort.Output,
-            };
-            newOutputPort.InputWire.OutputPorts.Add(newOutputPort);
-            newOutputPort.Output.OutputPorts.Add(newOutputPort);
-            RemoveOutputPort(outputPorts);
+            var newOutputPort = new OutputPort();
+            Link.Add(firstOutputPort.Wire, newOutputPort);
+            Link.Add(firstOutputPort.Output, newOutputPort);
+            Link.Remove(outputPorts);
         }
     }
 }

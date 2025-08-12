@@ -1,7 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Terraria;
 using Terraria.ID;
-using Terraria;
-using Terraria.DataStructures;
 
 namespace Wirelog
 {

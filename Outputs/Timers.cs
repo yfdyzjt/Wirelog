@@ -17,14 +17,11 @@ namespace Wirelog.Outputs
         {
             foreach (var outputPort in output.OutputPorts)
             {
-                if (outputPort.InputWire.InputPorts.Any(inputPort =>
+                if (outputPort.Wire.InputPorts.Any(inputPort =>
                 inputPort.Inputs.Any(input =>
                 input.Pos == output.Pos)))
                 {
-                    output.OutputPorts.Remove(outputPort);
-                    outputPort.Output = null;
-                    outputPort.InputWire?.OutputPorts.Remove(outputPort);
-                    outputPort.InputWire = null;
+                    Link.Remove(outputPort);
                 }
             }
         }
