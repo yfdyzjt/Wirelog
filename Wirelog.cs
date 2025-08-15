@@ -9,7 +9,7 @@ namespace Wirelog
     {
         public override void Load()
         {
-            WorldFile.OnWorldLoad += Converter.Convert;
+            WorldFile.OnWorldLoad += Converter.Do;
             WorldFile.OnWorldLoad += VerilogSimulator.Start;
             On_WorldGen.UpdateWorld += WorldGen_UpdateWorld;
             On_WorldGen.SaveAndQuit += WorldGen_SaveAndQuit;
@@ -72,7 +72,7 @@ namespace Wirelog
 
         public override void Unload()
         {
-            WorldFile.OnWorldLoad -= Converter.Convert;
+            WorldFile.OnWorldLoad -= Converter.Do;
             WorldFile.OnWorldLoad -= VerilogSimulator.Start;
             On_WorldGen.UpdateWorld -= WorldGen_UpdateWorld;
             On_WorldGen.SaveAndQuit -= WorldGen_SaveAndQuit;

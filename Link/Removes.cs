@@ -4,7 +4,7 @@ namespace Wirelog
 {
     public static partial class Link
     {
-        public static bool Remove(IEnumerable<Input> inputs)
+        public static bool Remove(ICollection<Input> inputs)
         {
             var result = true;
             foreach (var input in inputs)
@@ -14,7 +14,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Output> outputs)
+        public static bool Remove(ICollection<Output> outputs)
         {
             var result = true;
             foreach (var output in outputs)
@@ -24,7 +24,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<OutputPort> outputPorts)
+        public static bool Remove(ICollection<OutputPort> outputPorts)
         {
             var result = true;
             foreach (var outputPort in outputPorts)
@@ -34,7 +34,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Gate> gates)
+        public static bool Remove(ICollection<Gate> gates)
         {
             var result = true;
             foreach (var gate in gates)
@@ -44,7 +44,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Lamp> lamps)
+        public static bool Remove(ICollection<Lamp> lamps)
         {
             var result = true;
             foreach (var lamp in lamps)
@@ -54,7 +54,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Wire> wires)
+        public static bool Remove(ICollection<Wire> wires)
         {
             var result = true;
             foreach (var wire in wires)

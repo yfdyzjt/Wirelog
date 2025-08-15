@@ -4,7 +4,7 @@ namespace Wirelog
 {
     public static partial class Link
     {
-        public static bool Remove(Wire wire, IEnumerable<Gate> gates)
+        public static bool Remove(Wire wire, ICollection<Gate> gates)
         {
             var result = true;
             foreach (var gate in gates)
@@ -14,7 +14,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(Wire wire, IEnumerable<Lamp> lamps)
+        public static bool Remove(Wire wire, ICollection<Lamp> lamps)
         {
             var result = true;
             foreach (var lamp in lamps)
@@ -24,7 +24,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(Wire wire, IEnumerable<OutputPort> outputPorts)
+        public static bool Remove(Wire wire, ICollection<OutputPort> outputPorts)
         {
             var result = true;
             foreach (var outputPort in outputPorts)
@@ -34,7 +34,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(Wire wire, IEnumerable<InputPort> inputPorts)
+        public static bool Remove(Wire wire, ICollection<InputPort> inputPorts)
         {
             var result = true;
             foreach (var inputPort in inputPorts)
@@ -44,7 +44,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Wire> wires, Gate gate)
+        public static bool Remove(ICollection<Wire> wires, Gate gate)
         {
             var result = true;
             foreach (var wire in wires)
@@ -54,7 +54,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Wire> wires, Lamp lamp)
+        public static bool Remove(ICollection<Wire> wires, Lamp lamp)
         {
             var result = true;
             foreach (var wire in wires)
@@ -64,7 +64,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(Output output, IEnumerable<OutputPort> outputPorts)
+        public static bool Remove(Output output, ICollection<OutputPort> outputPorts)
         {
             var result = true;
             foreach (var outputPort in outputPorts)
@@ -74,7 +74,7 @@ namespace Wirelog
             return result;
         }
 
-        public static bool Remove(IEnumerable<Lamp> lamps, Gate gate)
+        public static bool Remove(ICollection<Lamp> lamps, Gate gate)
         {
             var result = true;
             foreach (var lamp in lamps)

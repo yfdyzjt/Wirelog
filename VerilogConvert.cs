@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Terraria;
@@ -11,7 +11,24 @@ namespace Wirelog
         private static void VerilogConvert()
         {
             Main.statusText = "convert verilog";
+            var dir = System.IO.Path.Combine(ModLoader.ModPath, "WirelogModule");
+            WriteCodeToFile(dir, "Wiring.v", GetTopModuleStringBuilder().ToString());
+            foreach (var module in _moduleDefinitions.Values)
+            {
+                WriteCodeToFile(dir, $"Module_{module.Id}.v", GetModuleStringBuilder(module).ToString());
+            }
+            WriteVModules(dir);
+        }
+
+        private static void WriteCodeToFile(string dir, string name, string code)
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name), code);
+        }
+
+        private static StringBuilder GetTopModuleStringBuilder()
+        {
             var sb = new StringBuilder();
+
             sb.AppendLine($"""
                 module Wiring (
                     input wire clk,
@@ -25,55 +42,119 @@ namespace Wirelog
                 );
                     assign in_width = {_inputPorts.Length};
                     assign out_width = {_outputPorts.Length};
+
+                    {GetWiresStringBuilder(_wires.Count + _moduleInstances.Count, _lampsFound.Values.Count)}
+                    {GetComponentsStringBuilder(_inputPorts, _outputPorts, _lampsFound.Values, _gatesFound.Values)}
+                    {GetStringModuleInstancesBuilder(_wires.Count, _moduleInstances)}
+
+                    endmodule
                 """);
 
-            if (_wires.Count > 0) 
-                sb.AppendLine($"    wire [{_wires.Count - 1}:0] wires;");
-            if (_lampsFound.Count > 0) 
-                sb.AppendLine($"    wire [{_lampsFound.Count - 1}:0] lamps;");
-            if (_wires.Count > 0)
-                sb.AppendLine($"    assign wiring_running = |wires;");
-            else
-                sb.AppendLine($"    assign wiring_running = 0;");
+            return sb;
+        }
 
-            sb.AppendLine("    // input port module");
-            foreach (var inputPort in _inputPorts)
-            {
-                sb.AppendLine(GetInputPortMoudleString(inputPort));
-            }
-            sb.AppendLine("    // output port module");
-            foreach (var outputPort in _outputPorts)
-            {
-                sb.AppendLine(GetOutputPortMoudleString(outputPort));
-            }
-            sb.AppendLine("    // lamp module");
-            foreach (var lamp in _lampsFound.Values)
-            {
-                sb.AppendLine(GetLampMoudleString(lamp));
-            }
-            sb.AppendLine("    // gate module");
-            foreach (var gate in _gatesFound.Values)
-            {
-                sb.AppendLine(GetGateMoudleString(gate));
-            }
+        private static StringBuilder GetModuleStringBuilder(Module module)
+        {
+            var sb = new StringBuilder();
 
             sb.AppendLine($"""
-                endmodule
+                module Module_{module.Id} (
+                    input wire clk,
+                    input wire reset,
+                    input wire logic_reset,
+                    input wire [{module.InputPorts.Count - 1}:0] in,
+                    output wire wiring_running,
+                    output wire [{module.OutputPorts.Count - 1}:0] out,
+                );
+
+                    {GetWiresStringBuilder(module.Wires.Count, module.Lamps.Count)}
+                    {GetComponentsStringBuilder(module.InputPorts, module.OutputPorts, module.Lamps, module.Gates)}
+
+                    endmodule
                 """);
 
-            WriteVerilogToFile(sb.ToString());
+            return sb;
         }
 
-        private static void WriteVerilogToFile(string verilogCode)
+        private static StringBuilder GetStringModuleInstancesBuilder(int wiresCount, ICollection<ModuleInstance> moduleInstances)
         {
-            var outputDir = System.IO.Path.Combine(ModLoader.ModPath, "WirelogModule");
-            WriteVModules(outputDir);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(outputDir, "Wiring.v"), verilogCode);
+            var sb = new StringBuilder();
+
+            if (moduleInstances.Count > 0)
+                sb.AppendLine($"    // module instances: {moduleInstances.Count}");
+            foreach (var moduleInstance in moduleInstances)
+            {
+                sb.AppendLine(GetModuleInstanceString(wiresCount, moduleInstance));
+            }
+
+            return sb;
         }
 
-        private static string GetInputPortMoudleString(InputPort inputPort)
+        private static StringBuilder GetWiresStringBuilder(int wiresCount, int lampsCount)
         {
-            var moduleType = GetModuleTypeString(inputPort.Wires.Count);
+            var sb = new StringBuilder();
+
+            if (wiresCount > 0)
+                sb.AppendLine($"    // wires: {wiresCount}");
+            if (wiresCount > 0)
+                sb.AppendLine($"    wire [{wiresCount - 1}:0] wires;");
+            if (lampsCount > 0)
+                sb.AppendLine($"    wire [{lampsCount - 1}:0] lamps;");
+            if (wiresCount > 0)
+                sb.AppendLine($"    assign wiring_running = |wires;");
+            else
+                sb.AppendLine($"    assign wiring_running = 1'b0;");
+
+            return sb;
+        }
+
+        private static StringBuilder GetComponentsStringBuilder(
+            ICollection<InputPort> inputPorts,
+            ICollection<OutputPort> outputPorts,
+            ICollection<Lamp> lamps,
+            ICollection<Gate> gates)
+        {
+            var sb = new StringBuilder();
+            if (inputPorts.Count > 0)
+                sb.AppendLine($"    // input port components: {inputPorts.Count}");
+            foreach (var inputPort in inputPorts)
+            {
+                sb.AppendLine(GetInputPortString(inputPort));
+            }
+            if (outputPorts.Count > 0)
+                sb.AppendLine($"    // output port components: {outputPorts.Count}");
+            foreach (var outputPort in outputPorts)
+            {
+                sb.AppendLine(GetOutputPortString(outputPort));
+            }
+            if (lamps.Count > 0)
+                sb.AppendLine($"    // lamp components: {lamps.Count}");
+            foreach (var lamp in lamps)
+            {
+                sb.AppendLine(GetLampString(lamp));
+            }
+            if (gates.Count > 0)
+                sb.AppendLine($"    // gate components: {gates.Count}");
+            foreach (var gate in gates)
+            {
+                sb.AppendLine(GetGateString(gate));
+            }
+            return sb;
+        }
+
+        private static string GetModuleInstanceString(int wiresCount, ModuleInstance moduleInstance)
+        {
+            var inputWires = GetWireNames(moduleInstance.InputMapping.Values);
+            var outputWires = GetWireNames(moduleInstance.OutputMapping.Values);
+            var runningWires = (wiresCount + moduleInstance.Id).ToString();
+            var connections = $".clk(clk), .reset(reset), .logic_reset(logic_reset), .in({inputWires}), .wiring_running(wires[{runningWires}]), .out({outputWires})";
+            var moduleName = $"Module_{moduleInstance.Module.Id}";
+            return BuildComponentInstanceString(moduleName, "m", moduleInstance.Id.ToString(), connections);
+        }
+
+        private static string GetInputPortString(InputPort inputPort)
+        {
+            var moduleType = GetComponentTypeString(inputPort.Wires.Count);
             var parameters = new List<string>();
             if (moduleType == "Multi") parameters.Add($".OUTPUT_COUNT({inputPort.Wires.Count})");
             var parameterString = BuildParameterString(parameters);
@@ -82,18 +163,18 @@ namespace Wirelog
             var outputWires = GetWireNames(inputPort.Wires);
             var connections = $".in(in[{inputPort.Id}]), .out({outputWires})";
 
-            return BuildModuleInstanceString(moduleName, "i", inputPort.Id.ToString(), connections);
+            return BuildComponentInstanceString(moduleName, "i", inputPort.Id.ToString(), connections);
         }
 
-        private static string GetOutputPortMoudleString(OutputPort outputPort)
+        private static string GetOutputPortString(OutputPort outputPort)
         {
             var connections = $".clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.Wire.Id}]), .out(out[{outputPort.Id}])";
-            return BuildModuleInstanceString("Output_Single", "o", outputPort.Id.ToString(), connections);
+            return BuildComponentInstanceString("Output_Single", "o", outputPort.Id.ToString(), connections);
         }
 
-        private static string GetLampMoudleString(Lamp lamp)
+        private static string GetLampString(Lamp lamp)
         {
-            var moduleType = GetModuleTypeString(lamp.Wires.Count);
+            var moduleType = GetComponentTypeString(lamp.Wires.Count);
             var parameters = new List<string>();
             if (moduleType == "Multi") parameters.Add($".INPUT_COUNT({lamp.Wires.Count})");
             var parameterString = BuildParameterString(parameters);
@@ -103,13 +184,13 @@ namespace Wirelog
             var clockReset = lamp.Type == LampType.Fault ? ".clk(clk)" : ".clk(clk), .reset(reset)";
             var connections = $"{clockReset}, .in({inputWires}), .out(lamps[{lamp.Id}])";
 
-            return BuildModuleInstanceString(moduleName, "l", lamp.Id.ToString(), connections);
+            return BuildComponentInstanceString(moduleName, "l", lamp.Id.ToString(), connections);
         }
 
-        private static string GetGateMoudleString(Gate gate)
+        private static string GetGateString(Gate gate)
         {
-            var inputType = GetModuleTypeString(gate.Type == GateType.Fault ? gate.Lamps.Count - 1 : gate.Lamps.Count);
-            var outputType = GetModuleTypeString(gate.Wires.Count);
+            var inputType = GetComponentTypeString(gate.Type == GateType.Fault ? gate.Lamps.Count - 1 : gate.Lamps.Count);
+            var outputType = GetComponentTypeString(gate.Wires.Count);
 
             var randSeed = Main.rand.Next(1, 0xFFF);
             var parameters = new List<string>();
@@ -136,10 +217,10 @@ namespace Wirelog
                 var inputLamps = GetLampNames(gate.Lamps);
                 connections = $".clk(clk), .logic_reset(logic_reset), .in({inputLamps}), .out({outputWires})";
             }
-            return BuildModuleInstanceString(moduleName, "g", gate.Id.ToString(), connections);
+            return BuildComponentInstanceString(moduleName, "g", gate.Id.ToString(), connections);
         }
 
-        private static string GetModuleTypeString(int count)
+        private static string GetComponentTypeString(int count)
         {
             return count is 0 or 1 ? "Single" : "Multi";
         }
@@ -149,14 +230,14 @@ namespace Wirelog
             return parameters.Count > 0 ? $" #({string.Join(", ", parameters)})" : "";
         }
 
-        private static string BuildModuleInstanceString(string moduleName, string instancePrefix, string id, string connections)
+        private static string BuildComponentInstanceString(string moduleName, string instancePrefix, string id, string connections)
         {
             return $"    {moduleName} {instancePrefix}_{id} ({connections});";
         }
 
         private static string GetWireNames(ICollection<Wire> wires)
         {
-            if (wires.Count == 0) return $"0";
+            if (wires.Count == 0) return $"1'b0";
             else if (wires.Count == 1) return $"wires[{wires.First().Id}]";
             return $"{{{string.Join(", ", wires.Select(w => $"wires[{w.Id}]"))}}}";
         }

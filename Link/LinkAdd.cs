@@ -2,6 +2,7 @@
 {
     public static partial class Link
     {
+        // Use interfaces to simplify code
         public static bool Add(Wire wire, Gate gate)
         {
             return wire?.Gates.Add(gate) == true && gate?.Wires.Add(wire) == true;

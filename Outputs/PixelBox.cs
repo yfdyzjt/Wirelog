@@ -56,26 +56,30 @@ namespace Wirelog.Outputs
 
             foreach (var gate in doubleDirGates)
             {
-                var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.Wire.Gates.Contains(gate)).ToHashSet();
+                var outputPorts = output.OutputPorts
+                    .Where(outputPort => outputPort.Wire.Gates.Contains(gate))
+                    .ToHashSet();
                 AddNewOutputPort(outputPorts);
             }
             foreach (var inputPort in doubleDirInputPorts)
             {
-                var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.Wire.InputPorts.Contains(inputPort)).ToHashSet();
+                var outputPorts = output.OutputPorts
+                    .Where(outputPort => outputPort.Wire.InputPorts.Contains(inputPort))
+                    .ToHashSet();
                 AddNewOutputPort(outputPorts);
             }
             foreach (var gate in singleDirGates)
             {
-                var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.Wire.Gates.Contains(gate)).ToHashSet();
+                var outputPorts = output.OutputPorts
+                    .Where(outputPort => outputPort.Wire.Gates.Contains(gate))
+                    .ToHashSet();
                 Link.Remove(outputPorts);
             }
             foreach (var inputPort in singleDirInputPorts)
             {
-                var outputPorts = output.OutputPorts.Where(outputPort =>
-                outputPort.Wire.InputPorts.Contains(inputPort)).ToHashSet();
+                var outputPorts = output.OutputPorts
+                    .Where(outputPort => outputPort.Wire.InputPorts.Contains(inputPort))
+                    .ToHashSet();
                 Link.Remove(outputPorts);
             }
         }
@@ -112,7 +116,7 @@ namespace Wirelog.Outputs
                 });
         }
 
-        private static void AddNewOutputPort(IEnumerable<OutputPort> outputPorts)
+        private static void AddNewOutputPort(ICollection<OutputPort> outputPorts)
         {
             var firstOutputPort = outputPorts.First();
             var newOutputPort = new OutputPort();

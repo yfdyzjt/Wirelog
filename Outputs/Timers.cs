@@ -17,9 +17,9 @@ namespace Wirelog.Outputs
         {
             foreach (var outputPort in output.OutputPorts)
             {
-                if (outputPort.Wire.InputPorts.Any(inputPort =>
-                inputPort.Inputs.Any(input =>
-                input.Pos == output.Pos)))
+                if (outputPort.Wire.InputPorts
+                    .Any(inputPort => inputPort.Inputs
+                    .Any(input => input.Pos == output.Pos)))
                 {
                     Link.Remove(outputPort);
                     // Two inputs cause pruning bug.

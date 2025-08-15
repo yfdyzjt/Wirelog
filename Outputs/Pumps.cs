@@ -122,8 +122,8 @@ namespace Wirelog.Outputs
             foreach (var inletPump in output.OutputPorts)
             {
                 HashSet<OutputPort> outletPumps = [];
-                foreach (var outletPump in inletPump.Wire.OutputPorts.Where(o =>
-                Main.tile[o.Output.Pos].TileType == TileID.OutletPump))
+                foreach (var outletPump in inletPump.Wire.OutputPorts
+                    .Where(o => Main.tile[o.Output.Pos].TileType == TileID.OutletPump))
                 {
                     outletPumps.Add(outletPump);
                 }

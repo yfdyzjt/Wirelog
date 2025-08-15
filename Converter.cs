@@ -10,6 +10,9 @@ namespace Wirelog
         private static readonly Dictionary<Point16, Input> _inputsFound = [];
         private static readonly Dictionary<Point16, Output> _outputsFound = [];
 
+        private static readonly Dictionary<long, Module> _moduleDefinitions = [];
+        private static readonly List<ModuleInstance> _moduleInstances = [];
+
         private static InputPort[] _inputPorts;
         private static OutputPort[] _outputPorts;
 
@@ -22,7 +25,7 @@ namespace Wirelog
         public static Dictionary<Point16, InputPort> InputsPortFound { get; } = [];
         public static OutputPort[] OutputsPortFound => _outputPorts;
 
-        public static void Convert()
+        public static void Do()
         {
             LoadVModules();
             PreClear();
@@ -30,32 +33,6 @@ namespace Wirelog
             Postprocess();
             VerilogConvert();
             PostClear();
-        }
-
-        private static void PreClear()
-        {
-            _inputsFound.Clear();
-            _outputsFound.Clear();
-            _gatesFound.Clear();
-            _lampsFound.Clear();
-            _wires.Clear();
-            _inputPorts = null;
-            _outputPorts = null;
-
-            InputsPortFound.Clear();
-        }
-
-        private static void PostClear()
-        {
-            Link.Remove(_wires);
-            _wires.Clear();
-            Link.Remove(_lampsFound.Values);
-            _lampsFound.Clear();
-            Link.Remove(_gatesFound.Values);
-            _gatesFound.Clear();
-
-            _outputsFound.Clear();
-            _inputPorts = null;
         }
     }
 }

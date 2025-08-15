@@ -48,13 +48,18 @@ namespace Wirelog.Outputs
                                 OutputPort outputPort = null;
                                 if (Converter.InputsFound.TryGetValue(pos, out var input))
                                 {
-                                    outputPort = output.OutputPorts.Where(o =>
-                                    o.Wire.InputPorts.FirstOrDefault()?.Inputs.Any(i => i == input) == true).FirstOrDefault();
+                                    outputPort = output.OutputPorts
+                                    .Where(o => o.Wire.InputPorts
+                                    .FirstOrDefault()?.Inputs
+                                    .Any(i => i == input) == true)
+                                    .FirstOrDefault();
                                 }
                                 else if (Converter.GatesFound.TryGetValue(pos, out var gate))
                                 {
-                                    outputPort = output.OutputPorts.Where(o =>
-                                    o.Wire.Gates.FirstOrDefault() == gate).FirstOrDefault();
+                                    outputPort = output.OutputPorts
+                                    .Where(o => o.Wire.Gates
+                                    .FirstOrDefault() == gate)
+                                    .FirstOrDefault();
                                 }
                                 if (outputPort != null)
                                 {

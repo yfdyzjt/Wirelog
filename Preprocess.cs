@@ -304,7 +304,9 @@ namespace Wirelog
             {
                 if (_inputsFound.TryGetValue(curPos, out var foundInput))
                 {
-                    if (wire.InputPorts.All(inputPort => inputPort.Inputs.All(input => input.Pos != foundInput.Pos)))
+                    if (wire.InputPorts
+                        .All(inputPort => inputPort.Inputs
+                        .All(input => input.Pos != foundInput.Pos)))
                     {
                         var inputPort = foundInput.InputPort ?? new InputPort();
                         Link.Add(foundInput, inputPort);
@@ -313,7 +315,8 @@ namespace Wirelog
                 }
                 if (_outputsFound.TryGetValue(curPos, out var foundOutput))
                 {
-                    if (wire.OutputPorts.All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
+                    if (wire.OutputPorts
+                        .All(outputPort => outputPort.Output.Pos != foundOutput.Pos))
                     {
                         var outputPort = new OutputPort();
                         Link.Add(foundOutput, outputPort);
