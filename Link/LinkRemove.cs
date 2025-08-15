@@ -2,7 +2,6 @@
 {
     public static partial class Link
     {
-
         public static bool Remove(Wire wire, Gate gate)
         {
             return wire?.Gates.Remove(gate) == true && gate?.Wires.Remove(wire) == true;

@@ -2,6 +2,23 @@
 {
     public static partial class Link
     {
+        public static bool Remove(Module module)
+        {
+            module.Wires.Clear();
+            module.InputPorts.Clear();
+            module.OutputPorts.Clear();
+            module.Lamps.Clear();
+            module.Gates.Clear();
+            return true;
+        }
+
+        public static bool Remove(ModuleInstance moduleInstance)
+        {
+            moduleInstance.InputMapping.Clear();
+            moduleInstance.OutputMapping.Clear();
+            return true;
+        }
+
         public static bool Remove(Input input)
         {
             return Remove(input, input.InputPort);

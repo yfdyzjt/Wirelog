@@ -4,6 +4,26 @@ namespace Wirelog
 {
     public static partial class Link
     {
+        public static bool Remove(ICollection<Module> modules)
+        {
+            var result = true;
+            foreach (var module in modules)
+            {
+                result &= Remove(module);
+            }
+            return result;
+        }
+
+        public static bool Remove(ICollection<ModuleInstance> moduleInstances)
+        {
+            var result = true;
+            foreach (var moduleInstance in moduleInstances)
+            {
+                result &= Remove(moduleInstance);
+            }
+            return result;
+        }
+
         public static bool Remove(ICollection<Input> inputs)
         {
             var result = true;

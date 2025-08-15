@@ -13,6 +13,7 @@
             _outputPorts = null;
             _moduleDefinitions.Clear();
             _moduleInstances.Clear();
+
             InputsPortFound.Clear();
         }
 
@@ -24,6 +25,10 @@
             _lampsFound.Clear();
             Link.Remove(_gatesFound.Values);
             _gatesFound.Clear();
+            Link.Remove(_moduleInstances);
+            _moduleInstances.Clear();
+            Link.Remove(_moduleDefinitions.Values);
+            _moduleDefinitions.Clear();
 
             _outputsFound.Clear();
             _inputPorts = null;
