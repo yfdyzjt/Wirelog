@@ -81,7 +81,7 @@ namespace Wirelog
             var sb = new StringBuilder();
 
             if (moduleInstances.Count > 0)
-                sb.AppendLine($"    // module instances: {moduleInstances.Count}");
+                sb.AppendLine($"// module instances: {moduleInstances.Count}");
             foreach (var moduleInstance in moduleInstances)
             {
                 sb.AppendLine(GetModuleInstanceString(wiresCount, moduleInstance));
@@ -95,15 +95,15 @@ namespace Wirelog
             var sb = new StringBuilder();
 
             if (wiresCount > 0)
-                sb.AppendLine($"    // wires: {wiresCount}");
+                sb.AppendLine($"// wires: {wiresCount} count");
             if (wiresCount > 0)
-                sb.AppendLine($"    wire [{wiresCount - 1}:0] wires;");
+                sb.AppendLine($"wire [{wiresCount - 1}:0] wires;");
             if (lampsCount > 0)
-                sb.AppendLine($"    wire [{lampsCount - 1}:0] lamps;");
+                sb.AppendLine($"wire [{lampsCount - 1}:0] lamps;");
             if (wiresCount > 0)
-                sb.AppendLine($"    assign wiring_running = |wires;");
+                sb.AppendLine($"assign wiring_running = |wires;");
             else
-                sb.AppendLine($"    assign wiring_running = 1'b0;");
+                sb.AppendLine($"assign wiring_running = 1'b0;");
 
             return sb;
         }
@@ -116,25 +116,25 @@ namespace Wirelog
         {
             var sb = new StringBuilder();
             if (inputPorts.Count > 0)
-                sb.AppendLine($"    // input port components: {inputPorts.Count}");
+                sb.AppendLine($"// input port components: {inputPorts.Count} count");
             foreach (var inputPort in inputPorts)
             {
                 sb.AppendLine(GetInputPortString(inputPort));
             }
             if (outputPorts.Count > 0)
-                sb.AppendLine($"    // output port components: {outputPorts.Count}");
+                sb.AppendLine($"// output port components: {outputPorts.Count} count");
             foreach (var outputPort in outputPorts)
             {
                 sb.AppendLine(GetOutputPortString(outputPort));
             }
             if (lamps.Count > 0)
-                sb.AppendLine($"    // lamp components: {lamps.Count}");
+                sb.AppendLine($"// lamp components: {lamps.Count} count");
             foreach (var lamp in lamps)
             {
                 sb.AppendLine(GetLampString(lamp));
             }
             if (gates.Count > 0)
-                sb.AppendLine($"    // gate components: {gates.Count}");
+                sb.AppendLine($"// gate components: {gates.Count} count");
             foreach (var gate in gates)
             {
                 sb.AppendLine(GetGateString(gate));

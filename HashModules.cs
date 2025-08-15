@@ -8,7 +8,7 @@ namespace Wirelog
     public static partial class Converter
     {
         // Add limited step transformation equivalence detection.
-        private static Dictionary<object, long> _componentHashes;
+        private static Dictionary<object, long> _componentHashes = [];
 
         private const int MaxModuleSearchLevel = 5;
         private const int MaxHashIterations = 100;

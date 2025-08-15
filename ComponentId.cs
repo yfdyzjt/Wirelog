@@ -71,6 +71,9 @@ namespace Wirelog
                 .SelectMany(output => output.OutputPorts)
                 .ToHashSet();
 
+            _inputPorts = new InputPort[inputPorts.Count];
+            _outputPorts = new OutputPort[outputPorts.Count];
+
             foreach (var input in _inputsFound.Values)
             {
                 InputsPortFound.Add(input.Pos, input.InputPort);
