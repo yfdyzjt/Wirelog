@@ -10,7 +10,7 @@ namespace Wirelog
         private static readonly Dictionary<Point16, Input> _inputsFound = [];
         private static readonly Dictionary<Point16, Output> _outputsFound = [];
 
-        private static readonly Dictionary<long, Module> _moduleDefinitions = [];
+        private static readonly List<Module> _moduleDefinitions = [];
         private static readonly List<ModuleInstance> _moduleInstances = [];
 
         private static InputPort[] _inputPorts;

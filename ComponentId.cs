@@ -8,7 +8,7 @@ namespace Wirelog
         private static void SetComponentsAndModulesId()
         {
             SetComponentsId(_wires, _inputPorts, _outputPorts, _lampsFound.Values, _gatesFound.Values);
-            SetModulesId(_moduleDefinitions.Values, _moduleInstances);
+            SetModulesId(_moduleDefinitions, _moduleInstances);
         }
 
         private static void SetComponentsId(

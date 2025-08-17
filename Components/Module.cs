@@ -4,7 +4,6 @@ namespace Wirelog
 {
     public class Module
     {
-        public long Hash { get; set; } // init;
         public int Id { get; set; }
 
         public HashSet<Gate> Gates { get; } = [];

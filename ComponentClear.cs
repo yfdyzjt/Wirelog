@@ -27,7 +27,7 @@
             _gatesFound.Clear();
             Link.Remove(_moduleInstances);
             _moduleInstances.Clear();
-            Link.Remove(_moduleDefinitions.Values);
+            Link.Remove(_moduleDefinitions);
             _moduleDefinitions.Clear();
 
             _outputsFound.Clear();

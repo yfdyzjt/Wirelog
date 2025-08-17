@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Terraria;
@@ -9,334 +8,370 @@ namespace Wirelog
     {
         private static void HashModules()
         {
-            Main.statusText = "hashing components";
+            var gateSignatures = new Dictionary<Gate, long>();
+            foreach (var gate in _gatesFound.Values)
+            {
+                gateSignatures[gate] = CalculateGateSignature(gate);
+            }
 
-            var componentHashes = new Dictionary<object, long>();
-            RunHashingIteration(
-                _wires,
-                _inputPorts,
-                _outputPorts,
-                _lampsFound.Values,
-                _gatesFound.Values,
-                ref componentHashes);
-
-            Main.statusText = "finding optimal modules";
-            var gateGroups = _gatesFound.Values
-                    .GroupBy(g => componentHashes[g])
-                    .Where(g => g.Count() > 1)
-                    .ToList();
-            var searchableGates = gateGroups
+            var seedGroups = gateSignatures
+                .GroupBy(kvp => kvp.Value)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Select(kvp => kvp.Key).ToList())
+                .OrderBy(g => g.Count)
+                .ToList();
+            var searchableGates = seedGroups
                     .SelectMany(g => g)
                     .ToHashSet();
-            if (gateGroups.Count == 0) return;
 
-            BuildOptimalModules(gateGroups, searchableGates, componentHashes);
-        }
+            var allFoundSubgraphSet = new List<SubgraphSet>();
+            // var processedGates = new HashSet<Gate>();
 
-        private static void RunHashingIteration(
-            ICollection<Wire> wires,
-            ICollection<InputPort> inputPorts,
-            ICollection<OutputPort> outputPorts,
-            ICollection<Lamp> lamps,
-            ICollection<Gate> gates,
-            ref Dictionary<object, long> componentHashes)
-        {
-            const int MaxHashIterations = 1000;
-
-            InitializeHashes(wires, inputPorts, outputPorts, lamps, gates, componentHashes);
-            CompressionNextHashes(ref componentHashes);
-            int iterations = 0;
-            while (true)
+            foreach (var seedGroup in seedGroups)
             {
-                var newHashes = ComputeNextHashes(wires, inputPorts, outputPorts, lamps, gates, componentHashes);
-                CompressionNextHashes(ref newHashes);
-                if (HashesStabilized(newHashes, componentHashes))
+                // var initialSubgraphSet = new SubgraphSet(seedGroup.Where(g => !processedGates.Contains(g)).ToList());
+                var initialSubgraphSet = new SubgraphSet([.. seedGroup]);
+                if (initialSubgraphSet.Subgraphs.Count < 2) continue;
+
+                var bestSubgraphSet = FindBestSubgraphSetExpansion(initialSubgraphSet, gateSignatures, searchableGates/*, processedGates*/);
+
+                if (bestSubgraphSet.Gates.Count > initialSubgraphSet.Gates.Count)
                 {
-                    Main.statusText = $"Hash stabilization converge after {iterations} iterations.";
-                    break;
+                    allFoundSubgraphSet.Add(bestSubgraphSet);
+                    // processedGates.UnionWith(bestSubgraphSet.Gates);
                 }
-                else if (iterations >= MaxHashIterations)
+            }
+
+            var finalSubgraphSets = ResolveSubgraphSetsConflicts(allFoundSubgraphSet);
+
+            foreach (var subgraphSet in finalSubgraphSets)
+            {
+                ReplaceSubgraphSetWithModuleInstances(subgraphSet);
+            }
+        }
+
+        private static long GetArrayLongHash(ICollection<long> hashs)
+        {
+            unchecked
+            {
+                long result = 17;
+                foreach (var hash in hashs)
                 {
-                    Main.statusText = $"Hash stabilization did not converge after {iterations} iterations.";
-                    break;
+                    result = result * 23 + hash;
                 }
-                componentHashes = newHashes;
-                iterations++;
+                return result;
             }
         }
 
-        private static void CompressionNextHashes(ref Dictionary<object, long> hashes)
+        private static long CalculateGateSignature(Gate gate)
         {
-            var uniqueHashes = hashes.Values.Distinct().OrderBy(h => h).ToList();
-            var compressionMap = uniqueHashes
-                .Select((hash, index) => new { hash, index })
-                .ToDictionary(p => p.hash, p => (long)p.index);
-            var compressedHashes = new Dictionary<object, long>();
-            foreach (var kvp in hashes)
-            {
-                compressedHashes[kvp.Key] = compressionMap[kvp.Value];
-            }
-            hashes = compressedHashes;
+            long gateHash = $"G:{gate.Type},W:{gate.Wires.Count}".GetHashCode();
+
+            var lampHashs = gate.Lamps
+                .Select(lamp => $"L:{lamp.Type},W:{lamp.Wires.Count}")
+                .OrderBy(s => s)
+                .Select(s => s.GetHashCode())
+                .ToList();
+
+            return GetArrayLongHash([gateHash, .. lampHashs]);
         }
 
-        private static void InitializeHashes(
-            ICollection<Wire> wires,
-            ICollection<InputPort> inputPorts,
-            ICollection<OutputPort> outputPorts,
-            ICollection<Lamp> lamps,
-            ICollection<Gate> gates,
-            Dictionary<object, long> componentHashes)
+        private static SubgraphSet FindBestSubgraphSetExpansion(
+            SubgraphSet currentSubgraphSet,
+            Dictionary<Gate, long> gateSignatures,
+            HashSet<Gate> searchableGates/*,
+            HashSet<Gate> processedGates*/)
         {
-            componentHashes.Clear();
-            foreach (var wire in wires) componentHashes[wire] = 0;
-            foreach (var inputPort in inputPorts) componentHashes[inputPort] = 1;
-            foreach (var outputPort in outputPorts) componentHashes[outputPort] = 2;
-            foreach (var lamp in lamps) componentHashes[lamp] = (long)lamp.Type + 3;
-            foreach (var gate in gates) componentHashes[gate] = (long)gate.Type + 7;
-        }
+            SubgraphSet bestFound = currentSubgraphSet;
 
-        private static Dictionary<object, long> ComputeNextHashes(
-            ICollection<Wire> wires,
-            ICollection<InputPort> inputPorts,
-            ICollection<OutputPort> outputPorts,
-            ICollection<Lamp> lamps,
-            ICollection<Gate> gates,
-            Dictionary<object, long> componentHashes)
-        {
-            var nextHashes = new Dictionary<object, long>();
+            var boundaryGateGroups = FindSubgraphSetBoundaryGates(currentSubgraphSet, searchableGates, gateSignatures/*, processedGates*/);
 
-            foreach (var inputPort in inputPorts)
+            foreach (var group in boundaryGateGroups)
             {
-                var code = new HashCode();
-                code.Add(componentHashes[inputPort]);
-                var wireHashes = inputPort.Wires
-                    .Where(wires.Contains)
-                    .Select(w => componentHashes[w])
-                    .OrderBy(h => h);
-                foreach (var h in wireHashes) code.Add(h);
-                nextHashes[inputPort] = code.ToHashCode();
-            }
+                var gatesByInstance = group.ToLookup(kvp => kvp.Key, kvp => kvp.Value);
+                var combinations = GetCombinations(gatesByInstance.Select(g => g.ToList()).ToList());
 
-            foreach (var outputPort in outputPorts)
-            {
-                var code = new HashCode();
-                code.Add(componentHashes[outputPort]);
-                if (wires.Contains(outputPort.Wire))
-                    code.Add(componentHashes[outputPort.Wire]);
-                nextHashes[outputPort] = code.ToHashCode();
-            }
-
-            foreach (var gate in gates)
-            {
-                var code = new HashCode();
-                code.Add(componentHashes[gate]);
-                var lampHashes = gate.Lamps
-                    .Where(lamps.Contains)
-                    .Select(l => componentHashes[l])
-                    .OrderBy(h => h);
-                foreach (var h in lampHashes) code.Add(h);
-                var wireHashes = gate.Wires
-                    .Where(wires.Contains)
-                    .Select(w => componentHashes[w])
-                    .OrderBy(h => h);
-                foreach (var h in wireHashes) code.Add(h);
-                nextHashes[gate] = code.ToHashCode();
-            }
-
-            foreach (var lamp in lamps)
-            {
-                var code = new HashCode();
-                code.Add(componentHashes[lamp]);
-                if (gates.Contains(lamp.Gate))
-                    code.Add(componentHashes[lamp.Gate]);
-                var wireHashes = lamp.Wires
-                    .Where(wires.Contains)
-                    .Select(w => componentHashes[w])
-                    .OrderBy(h => h);
-                foreach (var h in wireHashes) code.Add(h);
-                nextHashes[lamp] = code.ToHashCode();
-            }
-
-            foreach (var wire in wires)
-            {
-                var code = new HashCode();
-                code.Add(componentHashes[wire]);
-                var source = (object)wire.Gates.FirstOrDefault() ??
-                    wire.InputPorts.FirstOrDefault();
-                if (source != null &&
-                    (gates.Contains(source) ||
-                    inputPorts.Contains(source)))
-                    code.Add(componentHashes[source]);
-                var sinkHashes = wire.Lamps
-                    .Where(lamps.Contains)
-                    .Select(l => componentHashes[l])
-                    .Concat(wire.OutputPorts
-                    .Where(outputPorts.Contains)
-                    .Select(p => componentHashes[p]))
-                    .OrderBy(h => h);
-                foreach (var h in sinkHashes) code.Add(h);
-
-                nextHashes[wire] = code.ToHashCode();
-            }
-
-            return nextHashes;
-        }
-
-        private static bool HashesStabilized(Dictionary<object, long> newHashes, Dictionary<object, long> oldHashes)
-        {
-            if (newHashes.Count != oldHashes.Count) return false;
-            foreach (var kvp in newHashes)
-            {
-                if (!oldHashes.TryGetValue(kvp.Key, out var oldHash) || oldHash != kvp.Value)
+                foreach (var combination in combinations)
                 {
-                    return false;
+                    if (AreSubgraphSetIsomorphic(currentSubgraphSet, combination))
+                    {
+                        var nextSubgraphSet = currentSubgraphSet.Clone();
+                        SubGraphSetAddExpansion(nextSubgraphSet, combination);
+
+                        var resultFromPath = FindBestSubgraphSetExpansion(nextSubgraphSet, gateSignatures, searchableGates/*, processedGates*/);
+
+                        if (GetSubgraphSetScore(resultFromPath) > GetSubgraphSetScore(bestFound))
+                        {
+                            bestFound = resultFromPath;
+                        }
+                    }
                 }
+            }
+
+            return bestFound;
+        }
+
+        private static List<IGrouping<long, KeyValuePair<Subgraph, Gate>>>
+            FindSubgraphSetBoundaryGates(
+            SubgraphSet subgraphSet,
+            HashSet<Gate> searchableGates,
+            Dictionary<Gate, long> gateSignatures/*,
+            HashSet<Gate> processedGates*/)
+        {
+            var boundaryGates = new List<KeyValuePair<Subgraph, Gate>>();
+            foreach (var subgraph in subgraphSet.Subgraphs)
+            {
+                var neighborGates = new HashSet<Gate>();
+                foreach (var gateInSubgraph in subgraph.Gates)
+                {
+                    var gateWires = gateInSubgraph.Wires;
+                    neighborGates.UnionWith(gateWires.SelectMany(w => w.Lamps.Select(l => l.Gate)));
+                    var lampWires = gateInSubgraph.Lamps.SelectMany(l => l.Wires);
+                    neighborGates.UnionWith(lampWires.SelectMany(w => w.Gates));
+                    /*
+                    var wires = new HashSet<Wire>();
+                    wires.UnionWith(gateInSubgraph.Lamps.SelectMany(l => l.Wires));
+                    wires.UnionWith(gateInSubgraph.Wires);
+                    neighborGates.UnionWith(wires.SelectMany(w => w.Lamps.Select(l => l.Gate)));
+                    neighborGates.UnionWith(wires.SelectMany(w => w.Gates));
+                    */
+                }
+                foreach (var neighborGate in neighborGates)
+                {
+                    if (searchableGates.Contains(neighborGate) &&
+                        !subgraphSet.Gates.Contains(neighborGate) /*&&
+                        !processedGates.Contains(neighborGate)*/)
+                    {
+                        boundaryGates.Add(new KeyValuePair<Subgraph, Gate>(subgraph, neighborGate));
+                    }
+                }
+            }
+            return boundaryGates
+                .GroupBy(kvp => gateSignatures[kvp.Value])
+                .Where(g => g.Select(kvp => kvp.Key).Distinct().Count() == subgraphSet.Subgraphs.Count)
+                .ToList();
+        }
+
+        private static List<List<Gate>> GetCombinations(List<List<Gate>> gatesByInstance)
+        {
+            var result = new List<List<Gate>>();
+            if (gatesByInstance.Count == 0) return result;
+
+            void GenerateCombinations(int instanceIndex, List<Gate> currentCombination)
+            {
+                if (instanceIndex == gatesByInstance.Count)
+                {
+                    result.Add(new List<Gate>(currentCombination));
+                    return;
+                }
+
+                foreach (var gate in gatesByInstance[instanceIndex])
+                {
+                    currentCombination.Add(gate);
+                    GenerateCombinations(instanceIndex + 1, currentCombination);
+                    currentCombination.RemoveAt(currentCombination.Count - 1);
+                }
+            }
+
+            GenerateCombinations(0, []);
+            return result;
+        }
+
+        private static Dictionary<object, long> InitializeLabels(HashSet<object> components)
+        {
+            var labels = new Dictionary<object, long>();
+            foreach (var c in components)
+            {
+                long label = c switch
+                {
+                    Wire w => 1,
+                    InputPort i => 2,
+                    OutputPort o => 3,
+                    Gate g => (long)g.Type << 8,
+                    Lamp l => (long)l.Type << 16,
+                    _ => 0
+                };
+                labels[c] = label;
+            }
+            return labels;
+        }
+
+        private static IEnumerable<object> GetComponentNeighbors(object c)
+        {
+            return c switch
+            {
+                Wire w => w.Gates.Cast<object>().Concat(w.Lamps).Concat(w.InputPorts).Concat(w.OutputPorts),
+                Gate g => g.Lamps.Cast<object>().Concat(g.Wires),
+                Lamp l => l.Wires.Cast<object>().Concat([l.Gate]),
+                InputPort i => i.Wires,
+                OutputPort o => [o.Wire],
+                _ => []
+            };
+        }
+
+        private static Dictionary<object, long> ComponentWlIteration(Dictionary<object, long> currentLabels, HashSet<object> components)
+        {
+            var newLabels = new Dictionary<object, long>();
+            foreach (var c in components)
+            {
+                var neighborLabels = new List<long>();
+                var neighbors = GetComponentNeighbors(c);
+                foreach (var neighbor in neighbors)
+                {
+                    if (currentLabels.TryGetValue(neighbor, out var label))
+                    {
+                        neighborLabels.Add(label);
+                    }
+                }
+
+                neighborLabels.Sort();
+                newLabels[c] = GetArrayLongHash(neighborLabels);
+            }
+            return newLabels;
+        }
+
+        private static Dictionary<object, long> RunHashingIteration(HashSet<object> components)
+        {
+            var labels = InitializeLabels(components);
+
+            int iterations = components.Count;
+            for (var i = 0; i < iterations + 1; i++)
+            {
+                labels = ComponentWlIteration(labels, components);
+            }
+
+            return labels;
+        }
+
+        private static HashSet<object> GetModuleComponents(Module module)
+        {
+            var components = new HashSet<object>();
+            components.UnionWith(module.Wires);
+            components.UnionWith(module.Lamps);
+            components.UnionWith(module.Gates);
+            components.UnionWith(module.InputPorts);
+            components.UnionWith(module.OutputPorts);
+            return components;
+        }
+
+        private static Dictionary<object, long> GetModuleComponentHashs(Module module)
+        {
+            return RunHashingIteration(GetModuleComponents(module));
+        }
+
+        private static bool AreSubgraphSetIsomorphic(SubgraphSet subgraphSet, List<Gate> expansion)
+        {
+            var newSubgraphSet = subgraphSet.Clone();
+            SubGraphSetAddExpansion(newSubgraphSet, expansion);
+
+            long lastModuleHash = 0;
+            for (var i = 0; i < subgraphSet.Subgraphs.Count; i++)
+            {
+                var module = CopySubGraphToModule(subgraphSet.Subgraphs[i]).module;
+                var componentHashs = GetModuleComponentHashs(module);
+                var moduleHash = GetArrayLongHash([.. componentHashs.Values.Order()]);
+                if (i != 0 && moduleHash != lastModuleHash) return false;
+                lastModuleHash = moduleHash;
             }
             return true;
         }
 
-        private static void BuildOptimalModules(List<IGrouping<long, Gate>> gateGroups, HashSet<Gate> searchableGates, Dictionary<object, long> componentHashes)
+        private static int GetSubgraphSetScore(SubgraphSet subgraphSet)
         {
-            var allCandidateGroups = FindAllCandidateGroups(gateGroups, searchableGates, componentHashes);
-            if (allCandidateGroups.Count == 0) return;
-
-            var bestCombination = FindBestCombination(allCandidateGroups, 0, []).bestCombination;
-
-            foreach (var moduleGroup in bestCombination)
-            {
-                var prototype = moduleGroup.First();
-                if (prototype.Count < 2) continue;
-
-                var module = DefineModuleFromGateSet(prototype).module;
-                var (moduleHash, moduleComponentHashes) = ComputeModuleHash(module);
-                module.Hash = moduleHash;
-                var prototypePortsByHash = GetPortsHashMapByComponentHashes(moduleComponentHashes);
-
-                var instances = new List<ModuleInstance>();
-                foreach (var subgraphGates in moduleGroup)
-                {
-                    var instance = CreateModuleInstanceFromSubgraph(module, prototypePortsByHash, subgraphGates);
-                    instances.Add(instance);
-                }
-
-                if (instances.Count > 1)
-                {
-                    _moduleDefinitions.Add(moduleHash, module);
-                    foreach (var instance in instances)
-                    {
-                        _moduleInstances.Add(instance);
-                        PruneModularizedComponents(instance.Module.Gates, instance);
-                    }
-                }
-            }
+            return (subgraphSet.Gates.Count - 2) * (subgraphSet.Subgraphs.Count - 1);
         }
 
-        private static HashSet<Gate> GetConnectedGates(Gate gate)
+        private static List<SubgraphSet> ResolveSubgraphSetsConflicts(List<SubgraphSet> subgraphSets)
         {
-            var connectedGates = new HashSet<Gate>();
+            subgraphSets.Sort((a, b) => GetSubgraphSetScore(b).CompareTo(GetSubgraphSetScore(a)));
 
-            foreach (var wire in gate.Wires)
-            {
-                connectedGates
-                    .UnionWith(wire.Gates
-                    .Where(g => _gatesFound.ContainsKey(g.Pos)));
-            }
-            foreach (var lamp in gate.Lamps)
-            {
-                foreach (var wire in lamp.Wires)
-                {
-                    connectedGates
-                        .UnionWith(wire.Gates
-                        .Where(g => _gatesFound.ContainsKey(g.Pos)));
-                }
-            }
-            connectedGates.Remove(gate);
+            var finalModules = new List<SubgraphSet>();
+            var usedGates = new HashSet<Gate>();
 
-            return connectedGates;
+            foreach (var subgraphSet in subgraphSets)
+            {
+                if (subgraphSet.Gates.Overlaps(usedGates)) continue;
+                finalModules.Add(subgraphSet);
+                usedGates.UnionWith(subgraphSet.Gates);
+            }
+
+            return finalModules;
         }
 
-        private static (
-            Module module,
-            Dictionary<Gate, Gate> newGatesFound,
-            Dictionary<Lamp, Lamp> newLampsFound,
+        private static void SubGraphSetAddExpansion(SubgraphSet subgraphSet, List<Gate> expansionGates)
+        {
+            for (int i = 0; i < subgraphSet.Subgraphs.Count; i++)
+            {
+                subgraphSet.Subgraphs[i].Gates.Add(expansionGates[i]);
+            }
+            subgraphSet.Gates.UnionWith(expansionGates);
+        }
+
+        private static (Module module,
             Dictionary<Wire, Wire> newWiresFound)
-            DefineModuleFromGateSet(HashSet<Gate> moduleGates)
+            CopySubGraphToModule(Subgraph subgraph)
         {
             var module = new Module();
             var newGatesFound = new Dictionary<Gate, Gate>();
             var newLampsFound = new Dictionary<Lamp, Lamp>();
             var newWiresFound = new Dictionary<Wire, Wire>();
+            var wires = new HashSet<Wire>();
 
-            foreach (var gate in moduleGates)
+            foreach (var gate in subgraph.Gates)
             {
                 var newGate = new Gate { Type = gate.Type };
                 module.Gates.Add(newGate);
                 newGatesFound[gate] = newGate;
+                wires.UnionWith(gate.Wires);
                 foreach (var lamp in gate.Lamps)
                 {
                     var newLamp = new Lamp { Type = lamp.Type };
                     Link.Add(newLamp, newGate);
                     module.Lamps.Add(newLamp);
                     newLampsFound[lamp] = newLamp;
+                    wires.UnionWith(lamp.Wires);
                 }
             }
 
-            foreach (var gate in moduleGates)
+            foreach (var wire in wires)
             {
-                var wires = new HashSet<Wire>();
-                wires.UnionWith(gate.Wires);
-                wires.UnionWith(gate.Lamps.SelectMany(l => l.Wires));
-                foreach (var wire in wires)
+                var newWire = new Wire { Type = wire.Type };
+                foreach (var newLamp in wire.Lamps
+                    .Where(newLampsFound.ContainsKey)
+                    .Select(l => newLampsFound[l]))
                 {
-                    var newWire = new Wire { Type = wire.Type };
-                    foreach (var newLamp in wire.Lamps
-                        .Where(newLampsFound.ContainsKey)
-                        .Select(l => newLampsFound[l]))
-                    {
-                        Link.Add(newWire, newLamp);
-                    }
-                    foreach (var newGate in wire.Gates
-                        .Where(newGatesFound.ContainsKey)
-                        .Select(g => newGatesFound[g]))
-                    {
-                        Link.Add(newWire, newGate);
-                    }
-                    if (wire.InputPorts.Count != 0 ||
-                        wire.Gates.Any(g => !newGatesFound.ContainsKey(g)))
-                    {
-                        var newInputPort = new InputPort();
-                        Link.Add(newWire, newInputPort);
-                    }
-                    if (wire.OutputPorts.Count != 0 ||
-                        wire.Lamps.Any(l => !newLampsFound.ContainsKey(l)))
-                    {
-                        var newOutputPort = new OutputPort();
-                        Link.Add(newWire, newOutputPort);
-                    }
-                    newWiresFound[wire] = newWire;
-                    module.Wires.Add(newWire);
+                    Link.Add(newWire, newLamp);
                 }
+                foreach (var newGate in wire.Gates
+                    .Where(newGatesFound.ContainsKey)
+                    .Select(g => newGatesFound[g]))
+                {
+                    Link.Add(newWire, newGate);
+                }
+                if (wire.InputPorts.Count != 0 ||
+                    wire.Gates.Any(g => !newGatesFound.ContainsKey(g)))
+                {
+                    var newInputPort = new InputPort();
+                    module.InputPorts.Add(newInputPort);
+                    Link.Add(newWire, newInputPort);
+                }
+                if (wire.OutputPorts.Count != 0 ||
+                    wire.Lamps.Any(l => !newLampsFound.ContainsKey(l)))
+                {
+                    var newOutputPort = new OutputPort();
+                    module.OutputPorts.Add(newOutputPort);
+                    Link.Add(newWire, newOutputPort);
+                }
+                module.Wires.Add(newWire);
+                newWiresFound[wire] = newWire;
             }
 
-            return (module, newGatesFound, newLampsFound, newWiresFound);
+            return (module, newWiresFound);
         }
 
-        private static (long, Dictionary<object, long>) ComputeModuleHash(Module module)
+        private static Module CopySubGraphSetToModule(SubgraphSet subgraphSet)
         {
-            var componentHashes = new Dictionary<object, long>();
-
-            RunHashingIteration(
-                module.Wires,
-                module.InputPorts,
-                module.OutputPorts,
-                module.Lamps,
-                module.Gates,
-                ref componentHashes);
-            var sortedHashes = componentHashes.Values.OrderBy(h => h).ToList();
-
-            var code = new HashCode();
-            foreach (var hash in sortedHashes) code.Add(hash);
-            return (code.ToHashCode(), componentHashes);
+            return CopySubGraphToModule(subgraphSet.Subgraphs.First()).module;
         }
 
         private static Dictionary<long, List<object>> GetPortsHashMapByComponentHashes(Dictionary<object, long> moduleComponentHashes)
@@ -347,19 +382,28 @@ namespace Wirelog
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
-        private static ModuleInstance CreateModuleInstanceFromSubgraph(Module module, Dictionary<long, List<object>> prototypePortsByHash, HashSet<Gate> subgraphGates)
+        private static Dictionary<object, Wire> GetPortToWireMap(HashSet<Wire> wires)
         {
-            var (subgraphModule, _, _, originalToAbstractWireMap) = DefineModuleFromGateSet(subgraphGates);
-            var (_, subgraphHashes) = ComputeModuleHash(subgraphModule);
-            var subgraphPortsByHash = GetPortsHashMapByComponentHashes(subgraphHashes);
-
-            var abstractToOriginalWireMap = originalToAbstractWireMap.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
-            var abstractPortToWireMap = new Dictionary<object, Wire>();
-            foreach (var wire in subgraphModule.Wires)
+            var portToWireMap = new Dictionary<object, Wire>();
+            foreach (var wire in wires)
             {
-                foreach (var port in wire.InputPorts) abstractPortToWireMap[port] = wire;
-                foreach (var port in wire.OutputPorts) abstractPortToWireMap[port] = wire;
+                foreach (var port in wire.InputPorts) portToWireMap[port] = wire;
+                foreach (var port in wire.OutputPorts) portToWireMap[port] = wire;
             }
+            return portToWireMap;
+        }
+
+        private static ModuleInstance CreateModuleInstanceFromSubgraph(
+            Module module,
+            Dictionary<long, List<object>> prototypePortsByHash,
+            Subgraph subgraph)
+        {
+            var (subgraphModule, originalToAbstractWireMap) = CopySubGraphToModule(subgraph);
+            var abstractToOriginalWireMap = originalToAbstractWireMap.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+            var abstractPortToWireMap = GetPortToWireMap(subgraphModule.Wires);
+
+            var subgraphHashes = GetModuleComponentHashs(subgraphModule);
+            var subgraphPortsByHash = GetPortsHashMapByComponentHashes(subgraphHashes);
 
             var instance = new ModuleInstance { Module = module };
             foreach (var (hash, subgraphPortList) in subgraphPortsByHash)
@@ -416,165 +460,61 @@ namespace Wirelog
             foreach (var wire in wiresToPrune) _wires.Remove(wire);
         }
 
-        private static List<List<HashSet<Gate>>> FindAllCandidateGroups(List<IGrouping<long, Gate>> gateGroups, HashSet<Gate> searchableGates, Dictionary<object, long> componentHashes)
+        private static void ReplaceSubgraphSetWithModuleInstances(SubgraphSet subgraphSet)
         {
-            var allGroups = new List<List<HashSet<Gate>>>();
-            var processedSeeds = new HashSet<Gate>();
+            var module = CopySubGraphSetToModule(subgraphSet);
+            _moduleDefinitions.Add(module);
 
-            foreach (var seedGateGroup in gateGroups)
+            var moduleComponentHashes = GetModuleComponentHashs(module);
+            var prototypePortsByHash = GetPortsHashMapByComponentHashes(moduleComponentHashes);
+
+            foreach (var subgraph in subgraphSet.Subgraphs)
             {
-                foreach (var seedGate in seedGateGroup)
-                {
-                    if (processedSeeds.Contains(seedGate)) continue;
+                var instance = CreateModuleInstanceFromSubgraph(module, prototypePortsByHash, subgraph);
+                _moduleInstances.Add(instance);
 
-                    var potentialPeers = seedGateGroup.Where(g => g != seedGate);
-                    var (prototype, matches) = FindMatchesForSeed(seedGate, potentialPeers, searchableGates, componentHashes);
-
-                    if (matches.Count > 0)
-                    {
-                        var newGroup = new List<HashSet<Gate>> { prototype };
-                        newGroup.AddRange(matches);
-                        allGroups.Add(newGroup);
-
-                        processedSeeds.UnionWith(prototype);
-                        foreach (var match in matches)
-                        {
-                            processedSeeds.UnionWith(match);
-                        }
-                    }
-                }
+                PruneModularizedComponents(subgraph.Gates, instance);
             }
-
-            return allGroups;
         }
 
-        private static (HashSet<Gate> prototype, List<HashSet<Gate>> matches) FindMatchesForSeed(Gate seed, IEnumerable<Gate> potentialPeers, HashSet<Gate> searchableGates, Dictionary<object, long> componentHashes)
+        private class SubgraphSet
         {
-            var prototype = new HashSet<Gate> { seed };
+            public List<Subgraph> Subgraphs { get; }
+            public HashSet<Gate> Gates { get; }
 
-            var matchesWithMappings = new List<(HashSet<Gate> match, Dictionary<Gate, Gate> mapping)>();
-            foreach (var peerSeed in potentialPeers)
+            public SubgraphSet(List<Gate> seedGates)
             {
-                matchesWithMappings.Add((new HashSet<Gate> { peerSeed }, new Dictionary<Gate, Gate> { { seed, peerSeed } }));
+                Subgraphs = seedGates.Select(g => new Subgraph(g)).ToList();
+                Gates = new HashSet<Gate>(seedGates);
             }
 
-            bool changed;
-            do
+            private SubgraphSet(SubgraphSet other)
             {
-                changed = false;
-                var frontier = new HashSet<Gate>(prototype
-                    .SelectMany(GetConnectedGates)
-                    .Where(g => !prototype.Contains(g) && searchableGates.Contains(g)));
-                if (frontier.Count == 0) break;
+                Subgraphs = other.Subgraphs.Select(s => s.Clone()).ToList();
+                Gates = new HashSet<Gate>(other.Gates);
+            }
 
-                Gate bestGateToExpand = null;
-                List<(HashSet<Gate> match, Dictionary<Gate, Gate> mapping)> bestVerifiedMatches = null;
-
-                foreach (var gateToExpand in frontier)
-                {
-                    var currentVerifiedMatches = new List<(HashSet<Gate> match, Dictionary<Gate, Gate> mapping)>();
-                    foreach (var (match, mapping) in matchesWithMappings)
-                    {
-                        var (success, expandedMatch, newMapping) = TryExpandMatch(prototype, match, mapping, gateToExpand, searchableGates, componentHashes);
-                        if (success) currentVerifiedMatches.Add((expandedMatch, newMapping));
-                    }
-
-                    if (currentVerifiedMatches.Count > 0 && (bestVerifiedMatches == null || currentVerifiedMatches.Count > bestVerifiedMatches.Count))
-                    {
-                        bestGateToExpand = gateToExpand;
-                        bestVerifiedMatches = currentVerifiedMatches;
-                    }
-                }
-
-                if (bestGateToExpand != null)
-                {
-                    prototype.Add(bestGateToExpand);
-                    matchesWithMappings = bestVerifiedMatches;
-                    changed = true;
-                }
-
-            } while (changed);
-
-            var finalMatches = matchesWithMappings.Select(m => m.match).ToList();
-            return (prototype, finalMatches);
+            public SubgraphSet Clone() => new(this);
         }
 
-        private static (bool success, HashSet<Gate> expandedMatch, Dictionary<Gate, Gate> newMapping) TryExpandMatch(
-            HashSet<Gate> prototype,
-            HashSet<Gate> matchToExpand,
-            Dictionary<Gate, Gate> mapping,
-            Gate prototypeExpansionGate,
-            HashSet<Gate> searchableGates,
-            Dictionary<object, long> componentHashes)
+        private class Subgraph
         {
-            var protoNeighbors = GetConnectedGates(prototypeExpansionGate).Where(prototype.Contains).ToHashSet();
+            public Gate InitialSeed { get; }
+            public HashSet<Gate> Gates { get; }
 
-            var matchFrontier = matchToExpand
-                .SelectMany(GetConnectedGates)
-                .Where(g => !matchToExpand.Contains(g) && searchableGates.Contains(g))
-                .ToHashSet();
-
-            var expansionCandidates = matchFrontier
-                .Where(g => componentHashes[g] == componentHashes[prototypeExpansionGate])
-                .ToList();
-
-            foreach (var candidate in expansionCandidates)
+            public Subgraph(Gate seed)
             {
-                var matchNeighbors = GetConnectedGates(candidate)
-                    .Where(matchToExpand.Contains)
-                    .ToHashSet();
-
-                if (protoNeighbors.Count != matchNeighbors.Count) continue;
-
-                var mappedProtoNeighbors = protoNeighbors
-                    .Select(n => mapping[n])
-                    .ToHashSet();
-                if (!mappedProtoNeighbors.SetEquals(matchNeighbors)) continue;
-
-                var newMatch = new HashSet<Gate>(matchToExpand) { candidate };
-                var newMapping = new Dictionary<Gate, Gate>(mapping) { [prototypeExpansionGate] = candidate };
-                return (true, newMatch, newMapping);
+                InitialSeed = seed;
+                Gates = [seed];
             }
 
-            return (false, null, null);
-        }
-
-        private static (List<List<HashSet<Gate>>> bestCombination, int bestScore) FindBestCombination(
-            List<List<HashSet<Gate>>> allGroups,
-            int startIndex,
-            HashSet<Gate> usedGates)
-        {
-            if (startIndex >= allGroups.Count)
+            private Subgraph(Subgraph other)
             {
-                return (new List<List<HashSet<Gate>>>(), 0);
+                InitialSeed = other.InitialSeed;
+                Gates = new HashSet<Gate>(other.Gates);
             }
 
-            var (combinationWithout, scoreWithout) = FindBestCombination(allGroups, startIndex + 1, usedGates);
-
-            var currentGroup = allGroups[startIndex];
-            var prototype = currentGroup.First();
-            var instances = currentGroup;
-
-            bool canInclude = !instances.SelectMany(g => g).Any(usedGates.Contains);
-
-            if (canInclude)
-            {
-                var newUsedGates = new HashSet<Gate>(usedGates);
-                foreach (var instance in instances) newUsedGates.UnionWith(instance);
-
-                var (combinationWith, scoreWith) = FindBestCombination(allGroups, startIndex + 1, newUsedGates);
-
-                int currentScore = (instances.Count - 1) * (prototype.Count - 1);
-                scoreWith += currentScore;
-
-                if (scoreWith > scoreWithout)
-                {
-                    combinationWith.Add(currentGroup);
-                    return (combinationWith, scoreWith);
-                }
-            }
-
-            return (combinationWithout, scoreWithout);
+            public Subgraph Clone() => new(this);
         }
     }
 }
