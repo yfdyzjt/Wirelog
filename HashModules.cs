@@ -93,12 +93,12 @@ namespace Wirelog
 
                 foreach (var combination in combinations)
                 {
-                    if (AreSubgraphSetIsomorphic(currentSubgraphSet, combination))
-                    {
-                        var nextSubgraphSet = currentSubgraphSet.Clone();
-                        SubGraphSetAddExpansion(nextSubgraphSet, combination);
+                    var newSubgraphSet = currentSubgraphSet.Clone();
+                    SubGraphSetAddExpansion(newSubgraphSet, combination);
 
-                        var resultFromPath = FindBestSubgraphSetExpansion(nextSubgraphSet, gateSignatures, searchableGates/*, processedGates*/);
+                    if (AreSubgraphSetIsomorphic(newSubgraphSet))
+                    {
+                        var resultFromPath = FindBestSubgraphSetExpansion(newSubgraphSet, gateSignatures, searchableGates/*, processedGates*/);
 
                         if (GetSubgraphSetScore(resultFromPath) > GetSubgraphSetScore(bestFound))
                         {
@@ -259,11 +259,8 @@ namespace Wirelog
             return RunHashingIteration(GetModuleComponents(module));
         }
 
-        private static bool AreSubgraphSetIsomorphic(SubgraphSet subgraphSet, List<Gate> expansion)
+        private static bool AreSubgraphSetIsomorphic(SubgraphSet subgraphSet)
         {
-            var newSubgraphSet = subgraphSet.Clone();
-            SubGraphSetAddExpansion(newSubgraphSet, expansion);
-
             long lastModuleHash = 0;
             for (var i = 0; i < subgraphSet.Subgraphs.Count; i++)
             {
