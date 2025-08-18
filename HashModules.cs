@@ -124,17 +124,17 @@ namespace Wirelog
                 var neighborGates = new HashSet<Gate>();
                 foreach (var gateInSubgraph in subgraph.Gates)
                 {
+                    /*
                     var gateWires = gateInSubgraph.Wires;
                     neighborGates.UnionWith(gateWires.SelectMany(w => w.Lamps.Select(l => l.Gate)));
                     var lampWires = gateInSubgraph.Lamps.SelectMany(l => l.Wires);
                     neighborGates.UnionWith(lampWires.SelectMany(w => w.Gates));
-                    /*
+                    */
                     var wires = new HashSet<Wire>();
                     wires.UnionWith(gateInSubgraph.Lamps.SelectMany(l => l.Wires));
                     wires.UnionWith(gateInSubgraph.Wires);
                     neighborGates.UnionWith(wires.SelectMany(w => w.Lamps.Select(l => l.Gate)));
                     neighborGates.UnionWith(wires.SelectMany(w => w.Gates));
-                    */
                 }
                 foreach (var neighborGate in neighborGates)
                 {
@@ -147,6 +147,7 @@ namespace Wirelog
                 }
             }
             return boundaryGates
+                .Distinct()
                 .GroupBy(kvp => gateSignatures[kvp.Value])
                 .Where(g => g.Select(kvp => kvp.Key).Distinct().Count() == subgraphSet.Subgraphs.Count)
                 .ToList();
@@ -243,7 +244,7 @@ namespace Wirelog
             return labels;
         }
 
-        private static HashSet<object> GetModuleComponents(Module module)
+        private static Dictionary<object, long> GetModuleComponentHashs(Module module)
         {
             var components = new HashSet<object>();
             components.UnionWith(module.Wires);
@@ -251,12 +252,7 @@ namespace Wirelog
             components.UnionWith(module.Gates);
             components.UnionWith(module.InputPorts);
             components.UnionWith(module.OutputPorts);
-            return components;
-        }
-
-        private static Dictionary<object, long> GetModuleComponentHashs(Module module)
-        {
-            return RunHashingIteration(GetModuleComponents(module));
+            return RunHashingIteration(components);
         }
 
         private static bool AreSubgraphSetIsomorphic(SubgraphSet subgraphSet)
@@ -264,8 +260,7 @@ namespace Wirelog
             long lastModuleHash = 0;
             for (var i = 0; i < subgraphSet.Subgraphs.Count; i++)
             {
-                var module = CopySubGraphToModule(subgraphSet.Subgraphs[i]).module;
-                var componentHashs = GetModuleComponentHashs(module);
+                var componentHashs = subgraphSet.Subgraphs[i].ComponentHashs;
                 var moduleHash = GetArrayLongHash([.. componentHashs.Values.Order()]);
                 if (i != 0 && moduleHash != lastModuleHash) return false;
                 lastModuleHash = moduleHash;
@@ -273,9 +268,12 @@ namespace Wirelog
             return true;
         }
 
-        private static int GetSubgraphSetScore(SubgraphSet subgraphSet)
+        private static double GetSubgraphSetScore(SubgraphSet subgraphSet)
         {
-            return (subgraphSet.Gates.Count - 2) * (subgraphSet.Subgraphs.Count - 1);
+            var module = subgraphSet.Subgraphs.First().Module;
+            var portCount = module.InputPorts.Count + module.OutputPorts.Count;
+            var allCount = module.Gates.Count + module.Lamps.Count + module.Wires.Count + portCount;
+            return (subgraphSet.Gates.Count - 2) * (subgraphSet.Subgraphs.Count - 1) + (1 - (double)portCount / allCount);
         }
 
         private static List<SubgraphSet> ResolveSubgraphSetsConflicts(List<SubgraphSet> subgraphSets)
@@ -300,18 +298,21 @@ namespace Wirelog
             for (int i = 0; i < subgraphSet.Subgraphs.Count; i++)
             {
                 subgraphSet.Subgraphs[i].Gates.Add(expansionGates[i]);
+                var (module, compoundsFound) = CopySubGraphToModule(subgraphSet.Subgraphs[i]);
+                subgraphSet.Subgraphs[i].Module = module;
+                subgraphSet.Subgraphs[i].CompoundsFound = compoundsFound;
+                subgraphSet.Subgraphs[i].ComponentHashs = GetModuleComponentHashs(module);
             }
             subgraphSet.Gates.UnionWith(expansionGates);
         }
 
-        private static (Module module,
-            Dictionary<Wire, Wire> newWiresFound)
+        private static (Module module, Dictionary<object, object> compoundsFound)
             CopySubGraphToModule(Subgraph subgraph)
         {
             var module = new Module();
             var newGatesFound = new Dictionary<Gate, Gate>();
             var newLampsFound = new Dictionary<Lamp, Lamp>();
-            var newWiresFound = new Dictionary<Wire, Wire>();
+            var compoundsFound = new Dictionary<object, object>();
             var wires = new HashSet<Wire>();
 
             foreach (var gate in subgraph.Gates)
@@ -319,6 +320,7 @@ namespace Wirelog
                 var newGate = new Gate { Type = gate.Type };
                 module.Gates.Add(newGate);
                 newGatesFound[gate] = newGate;
+                compoundsFound[newGate] = gate;
                 wires.UnionWith(gate.Wires);
                 foreach (var lamp in gate.Lamps)
                 {
@@ -326,6 +328,7 @@ namespace Wirelog
                     Link.Add(newLamp, newGate);
                     module.Lamps.Add(newLamp);
                     newLampsFound[lamp] = newLamp;
+                    compoundsFound[newLamp] = lamp;
                     wires.UnionWith(lamp.Wires);
                 }
             }
@@ -360,15 +363,17 @@ namespace Wirelog
                     Link.Add(newWire, newOutputPort);
                 }
                 module.Wires.Add(newWire);
-                newWiresFound[wire] = newWire;
+                compoundsFound[newWire] = wire;
             }
 
-            return (module, newWiresFound);
+            return (module, compoundsFound);
         }
 
-        private static Module CopySubGraphSetToModule(SubgraphSet subgraphSet)
+        private static Dictionary<Wire, Wire> GetAbstractToOriginalWireMap(Dictionary<object, object> compoundsFound)
         {
-            return CopySubGraphToModule(subgraphSet.Subgraphs.First()).module;
+            return compoundsFound
+                .Where(kvp => kvp.Key is Wire).
+                ToDictionary(kvp => (Wire)kvp.Key, kvp => (Wire)kvp.Value);
         }
 
         private static Dictionary<long, List<object>> GetPortsHashMapByComponentHashes(Dictionary<object, long> moduleComponentHashes)
@@ -379,7 +384,7 @@ namespace Wirelog
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
-        private static Dictionary<object, Wire> GetPortToWireMap(HashSet<Wire> wires)
+        private static Dictionary<object, Wire> GetAbstractPortToWireMap(HashSet<Wire> wires)
         {
             var portToWireMap = new Dictionary<object, Wire>();
             foreach (var wire in wires)
@@ -390,30 +395,25 @@ namespace Wirelog
             return portToWireMap;
         }
 
-        private static ModuleInstance CreateModuleInstanceFromSubgraph(
-            Module module,
-            Dictionary<long, List<object>> prototypePortsByHash,
-            Subgraph subgraph)
+        private static ModuleInstance CreateModuleInstanceFromSubgraph(Subgraph prototypeSubgraph, Subgraph instanceSubgraph)
         {
-            var (subgraphModule, originalToAbstractWireMap) = CopySubGraphToModule(subgraph);
-            var abstractToOriginalWireMap = originalToAbstractWireMap.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
-            var abstractPortToWireMap = GetPortToWireMap(subgraphModule.Wires);
+            var abstractToOriginalWireMap = GetAbstractToOriginalWireMap(prototypeSubgraph.CompoundsFound);
+            var abstractPortToWireMap = GetAbstractPortToWireMap(instanceSubgraph.Module.Wires);
+            var prototypePortsByHash = GetPortsHashMapByComponentHashes(prototypeSubgraph.ComponentHashs);
+            var instancePortsByHash = GetPortsHashMapByComponentHashes(instanceSubgraph.ComponentHashs);
 
-            var subgraphHashes = GetModuleComponentHashs(subgraphModule);
-            var subgraphPortsByHash = GetPortsHashMapByComponentHashes(subgraphHashes);
-
-            var instance = new ModuleInstance { Module = module };
-            foreach (var (hash, subgraphPortList) in subgraphPortsByHash)
+            var instance = new ModuleInstance { Module = prototypeSubgraph.Module };
+            foreach (var (hash, instancePortList) in instancePortsByHash)
             {
                 if (prototypePortsByHash.TryGetValue(hash, out var prototypePortList) &&
-                    subgraphPortList.Count == prototypePortList.Count)
+                    instancePortList.Count == prototypePortList.Count)
                 {
-                    for (int i = 0; i < subgraphPortList.Count; i++)
+                    for (int i = 0; i < instancePortList.Count; i++)
                     {
-                        var subgraphPort = subgraphPortList[i];
+                        var instancePort = instancePortList[i];
                         var prototypePort = prototypePortList[i];
 
-                        var abstractWire = abstractPortToWireMap[subgraphPort];
+                        var abstractWire = abstractPortToWireMap[instancePort];
                         var originalWire = abstractToOriginalWireMap[abstractWire];
 
                         if (prototypePort is InputPort protoInput)
@@ -431,46 +431,32 @@ namespace Wirelog
             return instance;
         }
 
-        private static void PruneModularizedComponents(HashSet<Gate> gatesToPrune, ModuleInstance relatedInstance)
+        private static void PruneModularizedComponents(Subgraph instanceSubgraph)
         {
-            var lampsToPrune = gatesToPrune
-                .SelectMany(g => g.Lamps)
-                .ToHashSet();
+            var compoundsFound = instanceSubgraph.CompoundsFound;
+            var lampsToPrune = instanceSubgraph.Module.Lamps.Select(l => (Lamp)compoundsFound[l]).ToList();
+            var gatesToPrune = instanceSubgraph.Module.Gates.Select(g => (Gate)compoundsFound[g]).ToList();
+            var wiresToPrune = instanceSubgraph.Module.Wires
+                .Where(w => w.InputPorts.Count == 0 && w.OutputPorts.Count == 0)
+                .Select(w => (Wire)compoundsFound[w]).ToList();
 
-            var boundaryWires = relatedInstance.InputMapping.Values
-                .Union(relatedInstance.OutputMapping.Values)
-                .ToHashSet();
-            var allWiresInvolved = gatesToPrune
-                .SelectMany(g => g.Wires)
-                .Union(lampsToPrune
-                .SelectMany(l => l.Wires))
-                .ToHashSet();
-            var wiresToPrune = allWiresInvolved
-                .Where(w => !boundaryWires.Contains(w))
-                .ToHashSet();
-
-            Link.Remove(gatesToPrune);
-            foreach (var gate in gatesToPrune) _gatesFound.Remove(gate.Pos);
             Link.Remove(lampsToPrune);
             foreach (var lamp in lampsToPrune) _lampsFound.Remove(lamp.Pos);
+            Link.Remove(gatesToPrune);
+            foreach (var gate in gatesToPrune) _gatesFound.Remove(gate.Pos);
             Link.Remove(wiresToPrune);
             foreach (var wire in wiresToPrune) _wires.Remove(wire);
         }
 
         private static void ReplaceSubgraphSetWithModuleInstances(SubgraphSet subgraphSet)
         {
-            var module = CopySubGraphSetToModule(subgraphSet);
-            _moduleDefinitions.Add(module);
-
-            var moduleComponentHashes = GetModuleComponentHashs(module);
-            var prototypePortsByHash = GetPortsHashMapByComponentHashes(moduleComponentHashes);
-
-            foreach (var subgraph in subgraphSet.Subgraphs)
+            var prototypeSubgraph = subgraphSet.Subgraphs.First();
+            _moduleDefinitions.Add(prototypeSubgraph.Module);
+            foreach (var instanceSubgraph in subgraphSet.Subgraphs)
             {
-                var instance = CreateModuleInstanceFromSubgraph(module, prototypePortsByHash, subgraph);
+                var instance = CreateModuleInstanceFromSubgraph(prototypeSubgraph, instanceSubgraph);
                 _moduleInstances.Add(instance);
-
-                PruneModularizedComponents(subgraph.Gates, instance);
+                PruneModularizedComponents(instanceSubgraph);
             }
         }
 
@@ -498,17 +484,24 @@ namespace Wirelog
         {
             public Gate InitialSeed { get; }
             public HashSet<Gate> Gates { get; }
+            public Module Module { get; set; }
+            public Dictionary<object, object> CompoundsFound { get; set; }
+            public Dictionary<object, long> ComponentHashs { get; set; }
 
             public Subgraph(Gate seed)
             {
                 InitialSeed = seed;
                 Gates = [seed];
+                (Module, CompoundsFound) = CopySubGraphToModule(this);
+                ComponentHashs = GetModuleComponentHashs(Module);
             }
 
             private Subgraph(Subgraph other)
             {
                 InitialSeed = other.InitialSeed;
                 Gates = new HashSet<Gate>(other.Gates);
+                (Module, CompoundsFound) = CopySubGraphToModule(other);
+                ComponentHashs = GetModuleComponentHashs(Module);
             }
 
             public Subgraph Clone() => new(this);
