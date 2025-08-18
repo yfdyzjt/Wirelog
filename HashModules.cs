@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Terraria;
@@ -27,8 +28,12 @@ namespace Wirelog
             var allFoundSubgraphSet = new List<SubgraphSet>();
             // var processedGates = new HashSet<Gate>();
 
-            foreach (var seedGroup in seedGroups)
+            for (var i = 0; i < seedGroups.Count; i++)
             {
+                if (i % Math.Max(1, seedGroups.Count / 100) == 0)
+                    Main.statusText = $"hash modules {1f * i / seedGroups.Count:P1}";
+
+                var seedGroup = seedGroups[i];
                 // var initialSubgraphSet = new SubgraphSet(seedGroup.Where(g => !processedGates.Contains(g)).ToList());
                 var initialSubgraphSet = new SubgraphSet([.. seedGroup]);
                 if (initialSubgraphSet.Subgraphs.Count < 2) continue;
@@ -42,6 +47,7 @@ namespace Wirelog
                 }
             }
 
+            Main.statusText = $"create hash module instances";
             var finalSubgraphSets = ResolveSubgraphSetsConflicts(allFoundSubgraphSet);
 
             foreach (var subgraphSet in finalSubgraphSets)
@@ -257,11 +263,21 @@ namespace Wirelog
             return RunHashingIteration(components);
         }
 
+        private static void UpdateSubgraphHashs(Subgraph subgraph)
+        {
+            var (module, compoundsFound) = CopySubGraphToModule(subgraph);
+            subgraph.Module = module;
+            subgraph.CompoundsFound = compoundsFound;
+            subgraph.ComponentHashs = GetModuleComponentHashs(module);
+        }
+
         private static bool AreSubgraphSetIsomorphic(SubgraphSet subgraphSet)
         {
             long lastModuleHash = 0;
             for (var i = 0; i < subgraphSet.Subgraphs.Count; i++)
             {
+                UpdateSubgraphHashs(subgraphSet.Subgraphs[i]);
+
                 var componentHashs = subgraphSet.Subgraphs[i].ComponentHashs;
                 var moduleHash = GetArrayLongHash([.. componentHashs.Values.Order()]);
                 if (i != 0 && moduleHash != lastModuleHash) return false;
@@ -301,10 +317,6 @@ namespace Wirelog
             for (int i = 0; i < subgraphSet.Subgraphs.Count; i++)
             {
                 subgraphSet.Subgraphs[i].Gates.Add(expansionGates[i]);
-                var (module, compoundsFound) = CopySubGraphToModule(subgraphSet.Subgraphs[i]);
-                subgraphSet.Subgraphs[i].Module = module;
-                subgraphSet.Subgraphs[i].CompoundsFound = compoundsFound;
-                subgraphSet.Subgraphs[i].ComponentHashs = GetModuleComponentHashs(module);
             }
             subgraphSet.Gates.UnionWith(expansionGates);
         }
