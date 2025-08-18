@@ -66,7 +66,7 @@ namespace Wirelog
                     input wire logic_reset,
                     input wire [{module.InputPorts.Count - 1}:0] in,
                     output wire wiring_running,
-                    output wire [{module.OutputPorts.Count - 1}:0] out,
+                    output wire [{module.OutputPorts.Count - 1}:0] out
                 );
                 """);
 
@@ -120,25 +120,25 @@ namespace Wirelog
         {
             var sb = new StringBuilder();
             if (inputPorts.Count > 0)
-                sb.AppendLine($"    // input port components: {inputPorts.Count} count");
+                sb.AppendLine($"    // input port count: {inputPorts.Count}");
             foreach (var inputPort in inputPorts)
             {
                 sb.AppendLine(GetInputPortString(inputPort));
             }
             if (outputPorts.Count > 0)
-                sb.AppendLine($"    // output port components: {outputPorts.Count} count");
+                sb.AppendLine($"    // output port count: {outputPorts.Count}");
             foreach (var outputPort in outputPorts)
             {
                 sb.AppendLine(GetOutputPortString(outputPort));
             }
             if (lamps.Count > 0)
-                sb.AppendLine($"    // lamp components: {lamps.Count} count");
+                sb.AppendLine($"    // logic lamp count: {lamps.Count}");
             foreach (var lamp in lamps)
             {
                 sb.AppendLine(GetLampString(lamp));
             }
             if (gates.Count > 0)
-                sb.AppendLine($"    // gate components: {gates.Count} count");
+                sb.AppendLine($"    // logic gate count: {gates.Count}");
             foreach (var gate in gates)
             {
                 sb.AppendLine(GetGateString(gate));
@@ -148,8 +148,8 @@ namespace Wirelog
 
         private static string GetModuleInstanceString(int wiresCount, ModuleInstance moduleInstance)
         {
-            var inputWires = GetWireNames(moduleInstance.InputMapping.Values);
-            var outputWires = GetWireNames(moduleInstance.OutputMapping.Values);
+            var inputWires = GetWireNames(moduleInstance.InputPortMap.Values);
+            var outputWires = GetWireNames(moduleInstance.OutputPortMap.Values);
             var runningWires = (wiresCount + moduleInstance.Id).ToString();
             var connections = $".clk(clk), .reset(reset), .logic_reset(logic_reset), .in({inputWires}), .wiring_running(wires[{runningWires}]), .out({outputWires})";
             var moduleName = $"Module_{moduleInstance.Module.Id}";

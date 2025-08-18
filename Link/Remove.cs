@@ -14,8 +14,8 @@
 
         public static bool Remove(ModuleInstance moduleInstance)
         {
-            moduleInstance.InputMapping.Clear();
-            moduleInstance.OutputMapping.Clear();
+            moduleInstance.InputPortMap.Clear();
+            moduleInstance.OutputPortMap.Clear();
             return true;
         }
 

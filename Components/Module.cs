@@ -19,7 +19,7 @@ namespace Wirelog
     {
         public Module Module { get; init; }
         public int Id { get; set; }
-        public Dictionary<InputPort, Wire> InputMapping { get; } = [];
-        public Dictionary<OutputPort, Wire> OutputMapping { get; } = [];
+        public Dictionary<InputPort, Wire> InputPortMap { get; } = [];
+        public Dictionary<OutputPort, Wire> OutputPortMap { get; } = [];
     }
 }

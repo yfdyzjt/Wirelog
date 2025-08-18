@@ -354,13 +354,17 @@ namespace Wirelog
                     var newInputPort = new InputPort();
                     module.InputPorts.Add(newInputPort);
                     Link.Add(newWire, newInputPort);
+                    compoundsFound[newInputPort] = wire;
                 }
-                if (wire.OutputPorts.Count != 0 ||
-                    wire.Lamps.Any(l => !newLampsFound.ContainsKey(l)))
+                if ((wire.OutputPorts.Count != 0 ||
+                    wire.Lamps.Any(l => !newLampsFound.ContainsKey(l))) &&
+                    wire.InputPorts.Count == 0 &&
+                    wire.Gates.All(newGatesFound.ContainsKey))
                 {
                     var newOutputPort = new OutputPort();
                     module.OutputPorts.Add(newOutputPort);
                     Link.Add(newWire, newOutputPort);
+                    compoundsFound[newOutputPort] = wire;
                 }
                 module.Wires.Add(newWire);
                 compoundsFound[newWire] = wire;
@@ -369,65 +373,40 @@ namespace Wirelog
             return (module, compoundsFound);
         }
 
-        private static Dictionary<Wire, Wire> GetAbstractToOriginalWireMap(Dictionary<object, object> compoundsFound)
-        {
-            return compoundsFound
-                .Where(kvp => kvp.Key is Wire).
-                ToDictionary(kvp => (Wire)kvp.Key, kvp => (Wire)kvp.Value);
-        }
-
-        private static Dictionary<long, List<object>> GetPortsHashMapByComponentHashes(Dictionary<object, long> moduleComponentHashes)
-        {
-            return moduleComponentHashes
-                .Where(kvp => kvp.Key is InputPort || kvp.Key is OutputPort)
-                .GroupBy(kvp => kvp.Value, kvp => kvp.Key)
-                .ToDictionary(g => g.Key, g => g.ToList());
-        }
-
-        private static Dictionary<object, Wire> GetAbstractPortToWireMap(HashSet<Wire> wires)
-        {
-            var portToWireMap = new Dictionary<object, Wire>();
-            foreach (var wire in wires)
-            {
-                foreach (var port in wire.InputPorts) portToWireMap[port] = wire;
-                foreach (var port in wire.OutputPorts) portToWireMap[port] = wire;
-            }
-            return portToWireMap;
-        }
-
         private static ModuleInstance CreateModuleInstanceFromSubgraph(Subgraph prototypeSubgraph, Subgraph instanceSubgraph)
         {
-            var abstractToOriginalWireMap = GetAbstractToOriginalWireMap(prototypeSubgraph.CompoundsFound);
-            var abstractPortToWireMap = GetAbstractPortToWireMap(instanceSubgraph.Module.Wires);
-            var prototypePortsByHash = GetPortsHashMapByComponentHashes(prototypeSubgraph.ComponentHashs);
-            var instancePortsByHash = GetPortsHashMapByComponentHashes(instanceSubgraph.ComponentHashs);
-
+            var portToWireMap = instanceSubgraph.CompoundsFound
+                .Where(kv => kv.Key is InputPort or OutputPort)
+                .ToDictionary(kv => kv.Key, kv => (Wire)kv.Value);
+            var prototypePortsByHash = prototypeSubgraph.ComponentHashs
+                .Where(kv => kv.Key is InputPort or OutputPort)
+                .GroupBy(kvp => kvp.Value, kvp => kvp.Key)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var instancePortsByHash = instanceSubgraph.ComponentHashs
+                .Where(kv => kv.Key is InputPort or OutputPort)
+                .GroupBy(kvp => kvp.Value, kvp => kvp.Key)
+                .ToDictionary(g => g.Key, g => g.ToList());
             var instance = new ModuleInstance { Module = prototypeSubgraph.Module };
             foreach (var (hash, instancePortList) in instancePortsByHash)
             {
-                if (prototypePortsByHash.TryGetValue(hash, out var prototypePortList) &&
-                    instancePortList.Count == prototypePortList.Count)
+                if (prototypePortsByHash.TryGetValue(hash, out var prototypePortList))
                 {
                     for (int i = 0; i < instancePortList.Count; i++)
                     {
                         var instancePort = instancePortList[i];
                         var prototypePort = prototypePortList[i];
-
-                        var abstractWire = abstractPortToWireMap[instancePort];
-                        var originalWire = abstractToOriginalWireMap[abstractWire];
-
-                        if (prototypePort is InputPort protoInput)
+                        var originalWire = portToWireMap[instancePort];
+                        if (prototypePort is InputPort protoInputPort)
                         {
-                            instance.InputMapping[protoInput] = originalWire;
+                            instance.InputPortMap[protoInputPort] = originalWire;
                         }
-                        else if (prototypePort is OutputPort protoOutput)
+                        else if (prototypePort is OutputPort protoOutputPort)
                         {
-                            instance.OutputMapping[protoOutput] = originalWire;
+                            instance.OutputPortMap[protoOutputPort] = originalWire;
                         }
                     }
                 }
             }
-
             return instance;
         }
 
