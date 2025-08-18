@@ -93,6 +93,8 @@ namespace Wirelog
 
                 foreach (var combination in combinations)
                 {
+                    if (combination.Count != new HashSet<Gate>(combination).Count) continue;
+
                     var newSubgraphSet = currentSubgraphSet.Clone();
                     SubGraphSetAddExpansion(newSubgraphSet, combination);
 
@@ -273,7 +275,8 @@ namespace Wirelog
             var module = subgraphSet.Subgraphs.First().Module;
             var portCount = module.InputPorts.Count + module.OutputPorts.Count;
             var allCount = module.Gates.Count + module.Lamps.Count + module.Wires.Count + portCount;
-            return (subgraphSet.Gates.Count - 2) * (subgraphSet.Subgraphs.Count - 1) + (1 - (double)portCount / allCount);
+            return (subgraphSet.Gates.Count / subgraphSet.Subgraphs.Count - 2) *
+                (subgraphSet.Subgraphs.Count - 1) + (1 - (double)portCount / allCount);
         }
 
         private static List<SubgraphSet> ResolveSubgraphSetsConflicts(List<SubgraphSet> subgraphSets)
