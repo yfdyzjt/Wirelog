@@ -226,7 +226,7 @@ namespace Wirelog
                 }
 
                 neighborLabels.Sort();
-                newLabels[c] = GetArrayLongHash(neighborLabels);
+                newLabels[c] = GetArrayLongHash([currentLabels[c], .. neighborLabels]);
             }
             return newLabels;
         }

@@ -148,10 +148,18 @@ namespace Wirelog
 
         private static string GetModuleInstanceString(int wiresCount, ModuleInstance moduleInstance)
         {
-            var inputWires = GetWireNames(moduleInstance.InputPortMap.Values);
-            var outputWires = GetWireNames(moduleInstance.OutputPortMap.Values);
-            var runningWires = (wiresCount + moduleInstance.Id).ToString();
-            var connections = $".clk(clk), .reset(reset), .logic_reset(logic_reset), .in({inputWires}), .wiring_running(wires[{runningWires}]), .out({outputWires})";
+            var orderedInputWires = moduleInstance.InputPortMap
+                .OrderByDescending(kvp => kvp.Key.Id)
+                .Select(kvp => kvp.Value)
+                .ToList();
+            var orderedOutputWires = moduleInstance.OutputPortMap
+                .OrderByDescending(kvp => kvp.Key.Id)
+                .Select(kvp => kvp.Value)
+                .ToList();
+            var inputWires = GetWireNames(orderedInputWires);
+            var outputWires = GetWireNames(orderedOutputWires);
+            var runningWires = $"wires[{wiresCount + moduleInstance.Id}]";
+            var connections = $".clk(clk), .reset(reset), .logic_reset(logic_reset), .in({inputWires}), .wiring_running({runningWires}), .out({outputWires})";
             var moduleName = $"Module_{moduleInstance.Module.Id}";
             return BuildComponentInstanceString(moduleName, "m", moduleInstance.Id.ToString(), connections);
         }
@@ -172,8 +180,10 @@ namespace Wirelog
 
         private static string GetOutputPortString(OutputPort outputPort)
         {
-            var connections = $".clk(clk), .logic_reset(logic_reset), .in(wires[{outputPort.Wire.Id}]), .out(out[{outputPort.Id}])";
-            return BuildComponentInstanceString("Output_Single", "o", outputPort.Id.ToString(), connections);
+            var moduleType = outputPort.Output == null ? "Wire" : "Reg";
+            var connections = (moduleType == "Reg" ? ".clk(clk), .logic_reset(logic_reset), " : "") +
+                $".in(wires[{outputPort.Wire.Id}]), .out(out[{outputPort.Id}])";
+            return BuildComponentInstanceString($"Output_Single_{moduleType}", "o", outputPort.Id.ToString(), connections);
         }
 
         private static string GetLampString(Lamp lamp)

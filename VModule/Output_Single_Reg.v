@@ -1,13 +1,11 @@
-module Output_Multi #(
-    parameter INPUT_COUNT = 2  
-)(
+module Output_Single_Reg (
     input wire clk,            
     input wire logic_reset,         
-    input wire [INPUT_COUNT-1:0] in,
+    input wire in,
     output wire out
 );
     
-    wire result = ^in;
+    wire result = in;
 
     Output_Logic ol (
         .clk(clk),
