@@ -99,7 +99,7 @@ namespace Wirelog
             var sb = new StringBuilder();
 
             if (wiresCount > 0)
-                sb.AppendLine($"    // wires: {wiresCount} count");
+                sb.AppendLine($"    // wire count: {wiresCount}");
             if (wiresCount > 0)
                 sb.AppendLine($"    wire [{wiresCount - 1}:0] wires;");
             if (lampsCount > 0)
