@@ -173,7 +173,6 @@ namespace Wirelog
                         var relPos = new Point16(addedGate.Pos.X - lastPos.X, addedGate.Pos.Y - lastPos.Y);
                         var canonicalHash = GetArrayLongHash(new[] { expanded.Hash, canonicalSignature, relPos.GetHashCode() });
 
-                        lastPos = addedGate.Pos;
                         lastSignature = canonicalSignature;
                         expanded.Hash = canonicalHash;
                         disambiguatedExpansions.Add(expanded);
