@@ -24,7 +24,7 @@ namespace Wirelog
             PruneUnusedComponents();
             Main.statusText = $"create hash modules";
             SetPortsData();
-            HashModules();
+            // HashModules();
             Main.statusText = $"set components and modules id";
             SetComponentsAndModulesId();
         }
