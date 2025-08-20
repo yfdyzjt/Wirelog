@@ -22,7 +22,7 @@ namespace Wirelog
             Main.statusText = $"postprocess outputs";
             PostprocessOutput();
             PruneUnusedComponents();
-            Main.statusText = $"create hash modules";
+            // Main.statusText = $"create hash modules";
             SetPortsData();
             // HashModules();
             Main.statusText = $"set components and modules id";
