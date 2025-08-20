@@ -10,7 +10,6 @@ module Gate_Logic (
 
     initial begin
         has_out = 0;
-        prev_in = in;
     end
 
     assign out = has_out ? 0 : (prev_in ^ in);
